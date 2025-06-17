@@ -1,11 +1,30 @@
-# Simple UI Application
+# Call Center Agent Application
 
-This is a simple Python application with a graphical user interface (GUI) built using Tkinter. It displays a window with three buttons: "Agent Login", "Admin Login", and "Settings".
+This is a Python application with a graphical user interface (GUI) built using Tkinter, designed as a conceptual model for a call center agent dashboard.
 
 ## Features
 
-- Main window with three buttons.
-- Clicking a button prints a message to the console indicating which button was pressed.
+- **Main Window Layout:**
+    - A top bar containing an agent status dropdown.
+    - A left navigation panel with main action buttons.
+    - A central content area for other interactions or information.
+
+- **Agent Status Dropdown (Top-Right):**
+    - Allows agents to select their current status.
+    - Options: "Select Status", "Break - Lunch", "Break - Tea Time", "Break - Bathroom".
+    - Selecting an option prints the new status to the console.
+
+- **Navigation Buttons (Left Panel):**
+    - **Contacts:** Placeholder for accessing contact information.
+    - **Tasks:** Placeholder for managing agent tasks.
+    - **Campaign Progress:** Placeholder for viewing campaign details.
+    - Clicking these buttons prints a message to the console.
+
+- **Original Buttons (Main Content Area):**
+    - **Agent Login:** Placeholder for agent login functionality.
+    - **Admin Login:** Placeholder for admin login functionality.
+    - **Settings:** Placeholder for application settings.
+    - Clicking these buttons also prints a message to the console.
 
 ## Requirements
 
@@ -30,6 +49,6 @@ This is a simple Python application with a graphical user interface (GUI) built 
 
 ## Files
 
-- `app.py`: Contains the source code for the Tkinter application.
-- `test_app.py`: Placeholder for future UI tests.
-- `README.md`: This file.
+- `app.py`: Contains the source code for the Tkinter application, including UI layout and button/dropdown definitions.
+- `test_app.py`: Placeholder for future UI and logic tests.
+- `README.md`: This file, providing an overview and instructions.
