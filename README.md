@@ -1,2 +1,2 @@
 # MyLawSA
-General coding goed vir MylawSA en also use vi AI
+General coding goed vir MylawSA, Personal Projects en also use vir AI.
