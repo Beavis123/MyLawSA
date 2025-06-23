@@ -1,0 +1,1 @@
+kivy>=2.0.0 # Specify a version or range if needed
