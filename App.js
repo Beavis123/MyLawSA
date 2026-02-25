@@ -1,5 +1,5 @@
 /**
- * SAPS AccidentStatement — A MyLawSA Product
+ * AffidavitAssist — A MyLawSA Product
  * Expo Go compatible — single App.js
  * Colours: Red · Yellow · Green
  */
@@ -50,6 +50,122 @@ const isValidCell = v => /^\d{10}$/.test((v || '').replace(/\s/g, ''));
 const isValidID   = v => /^\d{13}$/.test((v || '').replace(/\s/g, ''));
 const isNotFuture = v => { if (!v) return false; const d = new Date(v); d.setHours(0,0,0,0); const t = new Date(); t.setHours(0,0,0,0); return d <= t; };
 const digitsOnly  = v => v.replace(/[^\d]/g, '');
+
+
+// ─────────────────────────────────────────────────────────────────
+// AFFIDAVIT CATEGORIES & TYPES
+// ─────────────────────────────────────────────────────────────────
+const AFFIDAVIT_CATEGORIES = [
+  {
+    id: 'vehicle',
+    icon: '🚗',
+    label: 'Vehicle / Road Accident',
+    colour: '#C62828',
+    description: 'Motor vehicle accidents, collision damage, hit and run, road incident statements.',
+    isDefault: true,
+    types: [
+      { id: 'vehicle_accident', label: 'Road Accident Statement', description: 'Guided step-by-step accident statement for SAPS / insurance purposes.' },
+    ],
+  },
+  {
+    id: 'crime',
+    icon: '🚓',
+    label: 'Crime-Related',
+    colour: '#1565C0',
+    description: 'Theft, burglary, assault, fraud, identity theft, and damage to property.',
+    types: [
+      { id: 'crime_theft_personal',   label: 'Theft (Personal Items)',         description: 'Cellphone, wallet, laptop, or other personal belongings stolen.' },
+      { id: 'crime_theft_vehicle',    label: 'Theft from / of a Vehicle',      description: 'Items stolen from your vehicle, or your vehicle stolen / attempted theft.' },
+      { id: 'crime_theft_docs',       label: 'Theft of Identity Documents',    description: "ID book, smart ID, passport, or driver's licence stolen." },
+      { id: 'crime_burglary_res',     label: 'Residential Burglary',           description: 'Break-in or burglary at your home or residence.' },
+      { id: 'crime_burglary_biz',     label: 'Business Premises Burglary',     description: 'Break-in or burglary at a business or commercial property.' },
+      { id: 'crime_burglary_attempt', label: 'Attempted Burglary',             description: 'Attempted break-in where no entry was successfully gained.' },
+      { id: 'crime_assault',          label: 'Physical Assault',               description: 'Physical attack or assault with or without a weapon.' },
+      { id: 'crime_assault_gbh',      label: 'Assault with Intent (GBH)',      description: 'Assault with intent to cause grievous bodily harm.' },
+      { id: 'crime_threats',          label: 'Threats or Intimidation',        description: 'Verbal or written threats or intimidation by another person.' },
+      { id: 'crime_fraud_accounts',   label: 'Fraudulent Accounts in My Name', description: 'Accounts or contracts opened in your name without your consent.' },
+      { id: 'crime_fraud_financial',  label: 'Financial / Credit Fraud',       description: 'Unauthorized financial transactions or credit fraud.' },
+      { id: 'crime_fraud_docs',       label: 'Forged or Falsified Documents',  description: 'Documents forged, falsified, or fraudulently used in your name.' },
+      { id: 'crime_fraud_info',       label: 'Personal Information Misuse',    description: 'Your personal information used without your knowledge or consent.' },
+      { id: 'crime_damage_malicious', label: 'Malicious Damage to Property',   description: 'Intentional or malicious damage to your property.' },
+      { id: 'crime_damage_vandalism', label: 'Vandalism',                      description: 'Graffiti, defacement, or vandalism of your property.' },
+    ],
+  },
+  {
+    id: 'documents',
+    icon: '📄',
+    label: 'Lost Documents',
+    colour: '#E65100',
+    description: "Lost ID, passport, driver's licence, bank cards, and official documents.",
+    types: [
+      { id: 'doc_lost_id',        label: 'Lost ID Book / Smart ID',                description: 'South African ID book or smart ID card lost or misplaced.' },
+      { id: 'doc_lost_passport',  label: 'Lost Passport',                          description: 'South African or foreign passport lost or misplaced.' },
+      { id: 'doc_lost_licence',   label: "Lost Driver's Licence",                 description: "Driver's licence card lost or misplaced." },
+      { id: 'doc_lost_bankcard',  label: 'Lost Bank Card / Credit Card',           description: 'Bank, credit, or debit card lost or misplaced.' },
+      { id: 'doc_lost_access',    label: 'Lost Work / Access Card',                description: 'Workplace access card, security card, or access pass lost.' },
+      { id: 'doc_lost_vehicle',   label: 'Lost Vehicle / Licensing Documents',     description: 'Vehicle registration papers or licensing documents lost.' },
+    ],
+  },
+  {
+    id: 'financial',
+    icon: '🏦',
+    label: 'Financial / Civil',
+    colour: '#2E7D32',
+    description: 'Property loss, income verification, employment changes, insurance claims.',
+    types: [
+      { id: 'fin_property_loss',  label: 'Loss of Property',                       description: 'Property lost due to fire, natural disaster, or accident.' },
+      { id: 'fin_income_verify',  label: 'Income / Residence Verification',        description: 'Proof of income or residence for banks or financial institutions.' },
+      { id: 'fin_employment',     label: 'Employment Change / Suspension',         description: 'Explanation of job suspension, dismissal, or employment change.' },
+      { id: 'fin_insurance',      label: 'Insurance-Related Statement',            description: 'Damage descriptions, loss claims, or insurance-related declarations.' },
+    ],
+  },
+  {
+    id: 'personal',
+    icon: '👥',
+    label: 'Personal Statements',
+    colour: '#6A1B9A',
+    description: 'Proof of address, residency, guardianship, household circumstances.',
+    types: [
+      { id: 'pers_address',       label: 'Proof of Address',                       description: 'Confirming your residential address for official purposes.' },
+      { id: 'pers_residency',     label: 'Proof of Residency Status',              description: 'For students, tenants, or visitors confirming residency status.' },
+      { id: 'pers_incident',      label: 'General Incident Description',           description: 'Description of an incident where no formal documentation exists.' },
+      { id: 'pers_guardianship',  label: 'Guardianship / Responsibility for Minor',description: 'Confirming guardianship or parental responsibility for a minor.' },
+      { id: 'pers_household',     label: 'Household Circumstances',                description: 'Statement regarding household circumstances for official purposes.' },
+    ],
+  },
+  {
+    id: 'legal',
+    icon: '🛂',
+    label: 'Legal & Administrative',
+    colour: '#37474F',
+    description: 'Court witness statements, SARS, Department of Labour, lost court documents.',
+    types: [
+      { id: 'legal_witness',      label: 'Witness Statement (Court / Police)',     description: 'Formal witness statement for court or police proceedings.' },
+      { id: 'legal_court_docs',   label: 'Lost Court Documents',                  description: 'Statement regarding lost or missing court documents.' },
+      { id: 'legal_sars',         label: 'SARS-Related Statement',                description: 'Lost IRP5, unknown deposits, or SARS-related declarations.' },
+      { id: 'legal_labour',       label: 'Department of Labour Statement',        description: 'Lost employment records or Department of Labour declarations.' },
+    ],
+  },
+  {
+    id: 'other',
+    icon: '📦',
+    label: 'Other Common Statements',
+    colour: '#4E342E',
+    description: 'Lost parcels, suspicious activity, workplace accidents, animal incidents.',
+    types: [
+      { id: 'other_parcel',       label: 'Lost Parcel / Transported Item',         description: 'Statement regarding a lost or damaged parcel or shipped item.' },
+      { id: 'other_suspicious',   label: 'Suspicious Activity Report',             description: 'Reporting suspicious activity at a residence or business.' },
+      { id: 'other_workplace',    label: 'Workplace Accident / Incident',          description: 'Statement regarding an accident or incident at the workplace.' },
+      { id: 'other_animal',       label: 'Animal-Related Incident',                description: 'Animal bite, attack, or damage caused by an animal.' },
+    ],
+  },
+];
+
+// Flat lookup by type id
+const AFFIDAVIT_TYPE_MAP = {};
+AFFIDAVIT_CATEGORIES.forEach(cat => {
+  cat.types.forEach(t => { AFFIDAVIT_TYPE_MAP[t.id] = { ...t, categoryId: cat.id, categoryLabel: cat.label, categoryColour: cat.colour, categoryIcon: cat.icon }; });
+});
 
 // ─────────────────────────────────────────────────────────────────
 // CLASSIFIER DATA
@@ -203,16 +319,18 @@ async function loadDrafts()          { try { const r = await AsyncStorage.getIte
 async function saveDraft(d)          { try { const list = await loadDrafts(); const i = list.findIndex(x => x.id === d.id); if (i >= 0) list[i] = d; else list.unshift(d); await AsyncStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch {} }
 async function deleteDraft(id)       { try { const list = await loadDrafts(); await AsyncStorage.setItem(STORE_KEY, JSON.stringify(list.filter(x => x.id !== id))); } catch {} }
 
-function createDraft() {
+function createDraft(statementTypeId) {
   const now  = new Date();
   const id   = `${now.getFullYear()}-${String(Math.floor(Math.random()*900)+100)}`;
   return {
     id, reportNumber:id, createdAt:now.toISOString(), status:'In Progress',
+    statementTypeId: statementTypeId || 'vehicle_accident',
     driver:   { fullName:'', cellOrEmail:'', idNumber:'', address:'', licenceNumber:'', relationship:'' },
     vehicle:  { registration:'', make:'', model:'', year:'', colour:'', trailerInvolved:false, trailerReg:'' },
     accident: { date:'', time:'', street:'', landmark:'', city:'', province:'', caseNumber:'' },
     classifierAnswers:{}, accidentKey:null, subAnswers:{},
     otherParties:[], witnesses:[], statementText:'',
+    genericAnswers:{},
     consentMarketing:false, consentMyLawSA:false,
   };
 }
@@ -652,8 +770,1632 @@ function SectionHead({ children }) {
   );
 }
 
+
 // ─────────────────────────────────────────────────────────────────
-// SCREEN 1 — SPLASH
+// SCREEN 0A — HOME / CATEGORY PICKER
+// ─────────────────────────────────────────────────────────────────
+function HomeScreen({ navigation }) {
+  const [selectedCat, setSelectedCat] = useState(AFFIDAVIT_CATEGORIES[0]);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: C.red }}>
+      <StatusBar barStyle="light-content" backgroundColor={C.red} />
+      {/* SA flag stripes */}
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '36%', backgroundColor: C.green }} />
+      <View style={{ position: 'absolute', bottom: '34%', left: 0, right: 0, height: '5%', backgroundColor: C.yellow }} />
+
+      <SafeAreaView style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 36, paddingBottom: 32 }}>
+          {/* Header */}
+          <View style={{ alignItems: 'center', marginBottom: 28 }}>
+            <Image source={{ uri: LOGO_B64 }} style={{ width: 72, height: 72, borderRadius: 20, backgroundColor: 'white', marginBottom: 16 }} resizeMode="contain" />
+            <Text style={{ fontSize: 28, fontWeight: '800', color: 'white', letterSpacing: -0.5, textAlign: 'center' }}>
+              Affidavit<Text style={{ color: C.yellow }}>Assist</Text>
+            </Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>
+              by MyLawSA
+            </Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginTop: 10, lineHeight: 20 }}>
+              What type of statement do you need help with?
+            </Text>
+          </View>
+
+          {/* Category cards */}
+          {AFFIDAVIT_CATEGORIES.map(cat => {
+            const isSelected = selectedCat.id === cat.id;
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                style={{
+                  backgroundColor: isSelected ? 'white' : 'rgba(255,255,255,0.12)',
+                  borderRadius: 16,
+                  borderWidth: 2,
+                  borderColor: isSelected ? C.yellow : 'transparent',
+                  padding: 16,
+                  marginBottom: 10,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 14,
+                }}
+                onPress={() => setSelectedCat(cat)}
+                activeOpacity={0.8}
+              >
+                <View style={{
+                  width: 48, height: 48, borderRadius: 14,
+                  backgroundColor: isSelected ? cat.colour : 'rgba(255,255,255,0.15)',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Text style={{ fontSize: 22 }}>{cat.icon}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: isSelected ? C.text : 'white' }}>{cat.label}</Text>
+                    {cat.isDefault && (
+                      <View style={{ backgroundColor: C.yellow, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Text style={{ fontSize: 9, fontWeight: '800', color: 'white', letterSpacing: 0.5 }}>DEFAULT</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={{ fontSize: 12, color: isSelected ? C.grey : 'rgba(255,255,255,0.6)', marginTop: 3, lineHeight: 17 }}>{cat.description}</Text>
+                </View>
+                <Text style={{ fontSize: 20, color: isSelected ? C.red : 'rgba(255,255,255,0.4)' }}>{isSelected ? '●' : '○'}</Text>
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Continue button */}
+          <TouchableOpacity
+            style={{
+              backgroundColor: C.yellow, borderRadius: 14, paddingVertical: 17,
+              alignItems: 'center', marginTop: 8, marginBottom: 16,
+              shadowColor: C.yellow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 6,
+            }}
+            onPress={() => navigation.navigate('TypePicker', { category: selectedCat })}
+            activeOpacity={0.85}
+          >
+            <Text style={{ color: 'white', fontSize: 17, fontWeight: '800' }}>
+              Select: {selectedCat.label} →
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate('Reports')} activeOpacity={0.85}>
+            <Text style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', fontSize: 13, textDecorationLine: 'underline' }}>
+              View My Existing Drafts
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: 20, lineHeight: 15 }}>
+            This statement has been generated based solely on information provided by the individual. The accuracy, completeness, and truthfulness of the contents remain the full responsibility of the person who supplied the information.
+          </Text>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SCREEN 0B — TYPE PICKER (sub-types within a category)
+// ─────────────────────────────────────────────────────────────────
+function TypePickerScreen({ navigation, route }) {
+  const { category } = route.params;
+  const [selectedType, setSelectedType] = useState(category.types[0]);
+
+  const accentCol = category.colour;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: accentCol }}>
+      <StatusBar barStyle="light-content" backgroundColor={accentCol} />
+      {/* Subtle bottom stripe */}
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '20%', backgroundColor: 'rgba(0,0,0,0.15)' }} />
+
+      <SafeAreaView style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 32 }}>
+          {/* Header */}
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 24, lineHeight: 28 }}>‹</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Back to Categories</Text>
+          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <Text style={{ fontSize: 32 }}>{category.icon}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: 'white', letterSpacing: -0.3 }}>{category.label}</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 2 }}>Select statement type</Text>
+            </View>
+          </View>
+
+          <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', lineHeight: 20, marginBottom: 24 }}>
+            {category.description}
+          </Text>
+
+          {/* Type list */}
+          {category.types.map(type => {
+            const isSelected = selectedType.id === type.id;
+            return (
+              <TouchableOpacity
+                key={type.id}
+                style={{
+                  backgroundColor: isSelected ? 'white' : 'rgba(255,255,255,0.12)',
+                  borderRadius: 14,
+                  borderWidth: 2,
+                  borderColor: isSelected ? C.yellow : 'transparent',
+                  padding: 16,
+                  marginBottom: 10,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                }}
+                onPress={() => setSelectedType(type)}
+                activeOpacity={0.8}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: isSelected ? C.text : 'white', marginBottom: 4 }}>{type.label}</Text>
+                  <Text style={{ fontSize: 12, color: isSelected ? C.grey : 'rgba(255,255,255,0.6)', lineHeight: 17 }}>{type.description}</Text>
+                </View>
+                <View style={{
+                  width: 24, height: 24, borderRadius: 12,
+                  backgroundColor: isSelected ? accentCol : 'rgba(255,255,255,0.2)',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {isSelected && <Text style={{ color: 'white', fontSize: 13, fontWeight: '800' }}>✓</Text>}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Splash / intro card for selected type */}
+          <View style={{
+            backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 14,
+            borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)',
+            padding: 18, marginTop: 8, marginBottom: 16,
+          }}>
+            <Text style={{ fontSize: 13, fontWeight: '800', color: C.yellow, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+              {selectedType.label}
+            </Text>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 20 }}>
+              {getStatementIntro(selectedType.id)}
+            </Text>
+          </View>
+
+          {/* Continue */}
+          <TouchableOpacity
+            style={{
+              backgroundColor: C.yellow, borderRadius: 14, paddingVertical: 17,
+              alignItems: 'center', marginBottom: 12,
+              shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
+            }}
+            onPress={async () => {
+              if (selectedType.id === 'vehicle_accident') {
+                navigation.navigate('Splash', { statementType: selectedType });
+              } else {
+                navigation.navigate('StatementSplash', { statementType: selectedType, category });
+              }
+            }}
+            activeOpacity={0.85}
+          >
+            <Text style={{ color: 'white', fontSize: 17, fontWeight: '800' }}>
+              Start: {selectedType.label} →
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate('Reports')} activeOpacity={0.85}>
+            <Text style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', fontSize: 13, textDecorationLine: 'underline' }}>
+              View My Existing Drafts
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SCREEN 0C — STATEMENT SPLASH (per-type intro for non-vehicle types)
+// ─────────────────────────────────────────────────────────────────
+function StatementSplashScreen({ navigation, route }) {
+  const { statementType, category } = route.params;
+  const info = getStatementSplashInfo(statementType.id);
+  const accentCol = category.colour;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: accentCol }}>
+      <StatusBar barStyle="light-content" backgroundColor={accentCol} />
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '30%', backgroundColor: 'rgba(0,0,0,0.2)' }} />
+
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: 32, paddingBottom: 28, alignItems: 'center' }}>
+          {/* Logo */}
+          <Image source={{ uri: LOGO_B64 }} style={{ width: 72, height: 72, borderRadius: 20, backgroundColor: 'white', marginBottom: 20 }} resizeMode="contain" />
+
+          {/* Icon + title */}
+          <Text style={{ fontSize: 48, marginBottom: 12 }}>{category.icon}</Text>
+          <Text style={{ fontSize: 30, fontWeight: '800', color: 'white', textAlign: 'center', letterSpacing: -0.5, lineHeight: 36, marginBottom: 8 }}>
+            {statementType.label}
+          </Text>
+          <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 20 }}>
+            {category.label} · AffidavitAssist
+          </Text>
+          <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', textAlign: 'center', lineHeight: 23, marginBottom: 24 }}>
+            {info.intro}
+          </Text>
+
+          {/* What you need card */}
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)', padding: 18, width: '100%', marginBottom: 20 }}>
+            <Text style={{ fontSize: 12, fontWeight: '800', color: C.yellow, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>📋 What you will need</Text>
+            {info.needs.map((n, i) => (
+              <View key={i} style={{ flexDirection: 'row', gap: 10, marginBottom: 6 }}>
+                <Text style={{ color: C.yellow, fontWeight: '800', fontSize: 13 }}>•</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, flex: 1, lineHeight: 19 }}>{n}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={{ flex: 1 }} />
+
+          <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>
+            A FREE SERVICE BY MYLAWSA
+          </Text>
+
+          <TouchableOpacity
+            style={{ width: '100%', backgroundColor: C.yellow, borderRadius: 14, paddingVertical: 17, alignItems: 'center', marginBottom: 12, shadowColor: C.yellow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 6 }}
+            onPress={async () => {
+              const d = createDraft(statementType.id);
+              await saveDraft(d);
+              navigation.navigate('GenericConsent', { draft: d, statementType, category });
+            }}
+            activeOpacity={0.85}
+          >
+            <Text style={{ color: 'white', fontSize: 17, fontWeight: '800' }}>Get Started →</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{ width: '100%', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginBottom: 16 }}
+            onPress={() => navigation.navigate('Reports')}
+            activeOpacity={0.85}
+          >
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15, fontWeight: '600' }}>I Have an Existing Draft</Text>
+          </TouchableOpacity>
+
+          <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 15 }}>
+            This statement has been generated based solely on information provided by the individual. The accuracy, completeness, and truthfulness of the contents remain the full responsibility of the person who supplied the information.
+          </Text>
+        </View>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// STATEMENT SPLASH CONTENT HELPER
+// Per-type intro text and "what you need" bullets
+// ─────────────────────────────────────────────────────────────────
+function getStatementIntro(typeId) {
+  const map = {
+    vehicle_accident:       'Step-by-step guided statement for road traffic accidents. Covers collision circumstances, other parties, and damage — ready for SAPS or your insurer.',
+    crime_theft_personal:   'Guided statement for theft of personal items such as a cellphone, wallet, laptop, or bag. Captures incident details for SAPS case number purposes.',
+    crime_theft_vehicle:    'Statement for theft from or of a motor vehicle. Covers what was taken, vehicle details, and circumstances of the theft.',
+    crime_theft_docs:       "Statement for the theft of identity documents including ID book, smart ID, passport, or driver's licence.",
+    crime_burglary_res:     'Statement for a residential break-in or burglary. Captures entry points, items taken, and circumstances of the incident.',
+    crime_burglary_biz:     'Statement for a burglary or break-in at business premises. Covers damage, items taken, and security circumstances.',
+    crime_burglary_attempt: 'Statement for an attempted break-in where no successful entry was made. Captures attempt circumstances and evidence.',
+    crime_assault:          'Statement for a physical assault. Captures the attacker description, nature of injuries, and incident circumstances.',
+    crime_assault_gbh:      'Statement for assault with intent to cause grievous bodily harm. Covers weapon use, injury severity, and incident detail.',
+    crime_threats:          'Statement for verbal or written threats and intimidation. Captures threat content, method of delivery, and context.',
+    crime_fraud_accounts:   'Statement for fraudulent accounts or contracts opened in your name without consent. Covers discovered accounts and suspected perpetrators.',
+    crime_fraud_financial:  'Statement for credit or financial fraud including unauthorized transactions.',
+    crime_fraud_docs:       'Statement for forged, falsified, or fraudulently used documents.',
+    crime_fraud_info:       'Statement for the unauthorized use of your personal information.',
+    crime_damage_malicious: 'Statement for malicious and intentional damage to your property.',
+    crime_damage_vandalism: 'Statement for vandalism, graffiti, or defacement of your property.',
+    doc_lost_id:            'Statement for a lost or misplaced South African ID book or smart ID card — required for Home Affairs replacement.',
+    doc_lost_passport:      'Statement for a lost or misplaced passport — required by the Department of Home Affairs.',
+    doc_lost_licence:       "Statement for a lost driver's licence card — required by the DLTC for a replacement card.",
+    doc_lost_bankcard:      'Statement for a lost bank, debit, or credit card.',
+    doc_lost_access:        'Statement for a lost workplace access card or security pass.',
+    doc_lost_vehicle:       'Statement for lost vehicle registration or licensing documents.',
+    fin_property_loss:      'Statement for property lost or destroyed due to fire, natural disaster, or accident — for insurance or civil purposes.',
+    fin_income_verify:      'Income or residence verification statement for banks, financial institutions, or government departments.',
+    fin_employment:         'Statement explaining a suspension, dismissal, retrenchment, or change in employment status.',
+    fin_insurance:          'Insurance-related statement covering loss, damage descriptions, or incident declarations for a claim.',
+    pers_address:           'Proof of residential address statement for official or institutional purposes.',
+    pers_residency:         'Residency status statement for students, tenants, or visitors requiring proof.',
+    pers_incident:          'General incident description where no formal documentation currently exists.',
+    pers_guardianship:      'Statement confirming guardianship or parental responsibility for a minor child.',
+    pers_household:         'Statement describing household circumstances for welfare, government, or institutional purposes.',
+    legal_witness:          'Formal witness statement for court or police proceedings.',
+    legal_court_docs:       'Statement regarding lost or missing court documents.',
+    legal_sars:             'SARS-related statement for a lost IRP5, unknown bank deposits, or tax declarations.',
+    legal_labour:           'Department of Labour statement for lost employment records or related declarations.',
+    other_parcel:           'Statement for a lost parcel or item in transit — for courier or insurance purposes.',
+    other_suspicious:       'Statement reporting suspicious activity observed at a residence or business.',
+    other_workplace:        'Statement for an accident or incident that occurred in the workplace.',
+    other_animal:           'Statement for an animal bite, attack, or damage caused by an animal.',
+  };
+  return map[typeId] || 'Guided affidavit statement — step by step.';
+}
+
+function getStatementSplashInfo(typeId) {
+  const map = {
+    crime_theft_personal:   { intro: 'We will guide you through creating a complete affidavit for the theft of your personal belongings. This statement can be used to open a SAPS case and for insurance claim purposes.', needs: ['Your full name and ID number', 'Date, time, and location of the theft', 'Description of items stolen and their value', 'Any witness details if available', 'Any suspect description if observed'] },
+    crime_theft_vehicle:    { intro: 'We will guide you through creating a complete affidavit for theft from or of your motor vehicle. This statement can be used to open a SAPS case and for insurance purposes.', needs: ['Your full name and ID number', 'Vehicle registration, make, model and colour', 'Date, time, and location of the theft', 'Description of items stolen or vehicle theft circumstances', 'Any witness or CCTV details if available'] },
+    crime_theft_docs:       { intro: 'We will guide you through creating a complete affidavit for the theft of your identity documents. This is required to apply for replacement documents at Home Affairs or the DLTC.', needs: ['Your full name and ID number (from memory or other document)', 'Date, time, and location of the theft', 'Which documents were stolen', 'Circumstances of the theft', 'SAPS case number if already reported'] },
+    crime_burglary_res:     { intro: 'We will guide you through creating a complete affidavit for a residential burglary. This statement captures everything needed for a SAPS case and insurance claim.', needs: ['Your full name and ID number', 'Address of the burglarised property', 'Date and time of the break-in (or when discovered)', 'Description of items stolen and their estimated value', 'Details of the point of entry and any damage caused'] },
+    crime_burglary_biz:     { intro: 'We will guide you through creating a complete affidavit for a business premises burglary. This statement is suitable for SAPS, insurance, and business purposes.', needs: ['Your full name and ID number', 'Business name and address', 'Date and time of the break-in (or when discovered)', 'Description of items stolen and their estimated value', 'Details of the point of entry, alarm systems, and any CCTV'] },
+    crime_burglary_attempt: { intro: 'We will guide you through creating a complete affidavit for an attempted burglary where no successful entry was made.', needs: ['Your full name and ID number', 'Address of the property', 'Date and time of the attempted break-in', 'Description of the point of attempted entry', 'Any witness or CCTV details'] },
+    crime_assault:          { intro: 'We will guide you through creating a complete affidavit for a physical assault. This statement can be used to open a SAPS case and for medical or legal purposes.', needs: ['Your full name and ID number', 'Date, time, and location of the assault', 'Description of the attacker (if known)', 'Description of injuries sustained', 'Witness details if available'] },
+    crime_assault_gbh:      { intro: 'We will guide you through creating a complete affidavit for assault with intent to cause grievous bodily harm. This is a serious criminal offence and this statement supports both SAPS and court proceedings.', needs: ['Your full name and ID number', 'Date, time, and location of the assault', 'Description of the attacker and any weapons used', 'Medical records or hospital visit details', 'Witness details if available'] },
+    crime_threats:          { intro: 'We will guide you through creating a complete affidavit for threats or intimidation. This statement can be used to apply for a protection order or to open a SAPS case.', needs: ['Your full name and ID number', 'Identity of the person making threats (if known)', 'Date, time, and nature of each threat or incident', 'Method of the threat (verbal, written, electronic)', 'Any supporting evidence such as messages or recordings'] },
+    crime_fraud_accounts:   { intro: 'We will guide you through creating a complete affidavit for fraudulent accounts opened in your name. This statement is required by credit bureaus, banks, and the SAPS to begin the fraud resolution process.', needs: ['Your full name and ID number', 'Details of the fraudulently opened accounts', 'When you discovered the fraud and how', 'Any suspected perpetrators if known', 'Any supporting correspondence from banks or creditors'] },
+    crime_fraud_financial:  { intro: 'We will guide you through creating a complete affidavit for credit or financial fraud including unauthorized transactions.', needs: ['Your full name and ID number', 'Details of the unauthorized transactions or credit agreements', 'Date discovered and how it was discovered', 'Financial institutions involved', 'Any communications from the institutions'] },
+    crime_fraud_docs:       { intro: 'We will guide you through creating a complete affidavit for forged, falsified, or fraudulently used documents.', needs: ['Your full name and ID number', 'Description of the document(s) involved', 'How and when you became aware of the forgery', 'Any known or suspected perpetrators', 'Copies of any related correspondence'] },
+    crime_fraud_info:       { intro: 'We will guide you through creating a complete affidavit for the unauthorized use of your personal information.', needs: ['Your full name and ID number', 'What information was used without your consent', 'How you became aware of the misuse', 'Any known or suspected perpetrators', 'Evidence of the unauthorized use'] },
+    crime_damage_malicious: { intro: 'We will guide you through creating a complete affidavit for malicious or intentional damage to your property.', needs: ['Your full name and ID number', 'Address or location of the damaged property', 'Description of the damage and estimated value', 'Identity of the suspected perpetrator if known', 'Date and time of the incident'] },
+    crime_damage_vandalism: { intro: 'We will guide you through creating a complete affidavit for vandalism or graffiti on your property.', needs: ['Your full name and ID number', 'Address or location of the affected property', 'Description and extent of the vandalism', 'Date and time of the incident', 'Any CCTV or witness details'] },
+    doc_lost_id:            { intro: 'We will guide you through creating a complete affidavit for a lost South African ID book or smart ID card. This document is required by the Department of Home Affairs to process your replacement application.', needs: ['Your full name and ID number (from memory)', 'Your date of birth and place of birth', 'Date and circumstances of when the ID was lost', 'Whether the loss was due to theft or misplacement', 'Your residential address'] },
+    doc_lost_passport:      { intro: 'We will guide you through creating a complete affidavit for a lost South African or foreign passport. This is required by the Department of Home Affairs or the relevant embassy.', needs: ['Your full name and ID number', 'Passport number if known', 'Date and circumstances of when the passport was lost', 'Whether the loss was due to theft or misplacement', 'Your residential address'] },
+    doc_lost_licence:       { intro: "We will guide you through creating a complete affidavit for a lost driver's licence card. This is required by the Driving Licence Testing Centre (DLTC) to process your replacement.", needs: ['Your full name and ID number', "Driver's licence number if known", 'Date and circumstances of when the licence was lost', 'Whether the loss was due to theft or misplacement', 'Your residential address'] },
+    doc_lost_bankcard:      { intro: 'We will guide you through creating a complete affidavit for a lost bank, debit, or credit card. Some banks or financial institutions require this for replacement or fraud investigation.', needs: ['Your full name and ID number', 'Bank name and account type', 'Last four digits of the card if known', 'Date and circumstances of the loss', 'Whether you suspect the card was stolen'] },
+    doc_lost_access:        { intro: 'We will guide you through creating a complete affidavit for a lost workplace access card or security pass. This is typically required by your employer or security provider.', needs: ['Your full name and ID number', 'Employer or company name', 'Type of access card and its reference number if known', 'Date and circumstances of the loss', 'Your residential address'] },
+    doc_lost_vehicle:       { intro: 'We will guide you through creating a complete affidavit for lost vehicle registration or licensing documents. This is required by the Department of Transport for replacement.', needs: ['Your full name and ID number', 'Vehicle registration number, make, model, and colour', 'Documents that were lost', 'Date and circumstances of the loss', 'Your residential address'] },
+    fin_property_loss:      { intro: 'We will guide you through creating a complete affidavit for property lost or destroyed due to fire, natural disaster, or accident. This is required for insurance claims or civil proceedings.', needs: ['Your full name and ID number', 'Address or location of the property', 'Description of lost or destroyed items and their estimated value', 'Date and nature of the incident', 'Any supporting reports (fire brigade, SAPS, municipal)'] },
+    fin_income_verify:      { intro: 'We will guide you through creating a complete income or residence verification affidavit for banks, financial institutions, or government departments.', needs: ['Your full name and ID number', 'Your residential address', 'Current employment status and employer details', 'Monthly income amount', 'Purpose of the verification statement'] },
+    fin_employment:         { intro: 'We will guide you through creating a complete affidavit explaining a change in employment status such as suspension, dismissal, or retrenchment.', needs: ['Your full name and ID number', 'Employer name and address', 'Nature of the employment change', 'Date the change took effect', 'Any supporting correspondence from your employer'] },
+    fin_insurance:          { intro: 'We will guide you through creating a complete insurance-related affidavit for loss, damage, or claim purposes.', needs: ['Your full name and ID number', 'Insurance company name and policy number', 'Description of the insured item or property', 'Nature and date of the loss or damage', 'Estimated value of the claim'] },
+    pers_address:           { intro: 'We will guide you through creating a complete proof of address affidavit for official or institutional purposes.', needs: ['Your full name and ID number', 'Your current residential address', 'How long you have resided at this address', 'Purpose of the proof of address', 'Name of a person who can confirm your address if required'] },
+    pers_residency:         { intro: 'We will guide you through creating a complete residency status affidavit for students, tenants, or visitors.', needs: ['Your full name and ID number', 'Your current address and status (student, tenant, visitor)', 'Name of the property owner or institution if applicable', 'Duration of your stay at the address', 'Purpose of the residency statement'] },
+    pers_incident:          { intro: 'We will guide you through creating a general incident description affidavit where no formal documentation currently exists.', needs: ['Your full name and ID number', 'Date, time, and location of the incident', 'A clear description of what happened', 'Names of any other parties or witnesses involved', 'Purpose or intended recipient of the statement'] },
+    pers_guardianship:      { intro: 'We will guide you through creating a complete guardianship affidavit confirming your responsibility for a minor child.', needs: ['Your full name and ID number', "The minor's full name and date of birth", 'Your relationship to the minor', 'Biological parent or guardian details if applicable', 'Purpose of the guardianship statement'] },
+    pers_household:         { intro: 'We will guide you through creating a complete household circumstances statement for welfare, government, or institutional purposes.', needs: ['Your full name and ID number', 'Your residential address', 'Names and ages of all household members', 'Current income and employment status of household', 'Purpose of the household statement'] },
+    legal_witness:          { intro: 'We will guide you through creating a formal witness statement for court or police proceedings. This statement must be accurate and truthful as it may be used in legal proceedings.', needs: ['Your full name and ID number', 'Your relationship to the matter (bystander, victim, participant)', 'Date, time, and location of the incident you witnessed', 'A clear and chronological account of what you witnessed', 'Contact details for follow-up by investigators or attorneys'] },
+    legal_court_docs:       { intro: 'We will guide you through creating a complete affidavit for lost court documents. This is required by the court registrar for replacement or duplication of documents.', needs: ['Your full name and ID number', 'Case number and court name if known', 'Description of the lost documents', 'Date and circumstances of the loss', "Your attorney's details if applicable"] },
+    legal_sars:             { intro: 'We will guide you through creating a complete SARS-related affidavit for lost IRP5 documents, unknown bank deposits, or other SARS-related declarations.', needs: ['Your full name and ID number', 'Your tax reference number', 'Tax year in question', 'Description of the declaration or lost document', 'Employer details if IRP5-related'] },
+    legal_labour:           { intro: 'We will guide you through creating a complete Department of Labour affidavit for lost employment records or related declarations.', needs: ['Your full name and ID number', 'Previous employer name and address', 'Employment dates', 'Description of the lost or unavailable records', 'Purpose of the declaration'] },
+    other_parcel:           { intro: 'We will guide you through creating a complete affidavit for a lost parcel or item in transit. This is typically required by the courier company or for insurance purposes.', needs: ['Your full name and ID number', 'Courier or transport company name', 'Tracking number or reference if available', 'Description of the parcel contents and value', 'Date sent and expected delivery date'] },
+    other_suspicious:       { intro: 'We will guide you through creating a complete affidavit for suspicious activity observed at a residence or business.', needs: ['Your full name and ID number', 'Address where the activity was observed', 'Date, time, and description of the suspicious activity', 'Description of suspicious persons or vehicles', 'Any actions already taken (neighbourhood watch, SAPS report)'] },
+    other_workplace:        { intro: 'We will guide you through creating a complete affidavit for a workplace accident or incident. This is required for compensation, insurance, or disciplinary purposes.', needs: ['Your full name and ID number', 'Employer name and workplace address', 'Date, time, and location of the incident within the workplace', 'Description of the accident or incident', 'Names of witnesses or supervisors present'] },
+    other_animal:           { intro: 'We will guide you through creating a complete affidavit for an animal-related incident such as a bite, attack, or property damage caused by an animal.', needs: ['Your full name and ID number', 'Date, time, and location of the incident', 'Description of the animal and its owner if known', 'Nature of injuries or damages sustained', 'Medical treatment received if any'] },
+  };
+  return map[typeId] || {
+    intro: 'We will guide you step by step through creating a complete and accurate affidavit statement.',
+    needs: ['Your full name and ID number', 'Date and location of the relevant incident', 'A description of the circumstances', 'Witness or other party details if applicable'],
+  };
+}
+
+
+// ─────────────────────────────────────────────────────────────────
+// GENERIC QUESTION FLOWS (all non-vehicle statement types)
+// Each type has sections, each section has fields
+// field types: text | textarea | ynu | date | picker
+// ─────────────────────────────────────────────────────────────────
+
+const GENERIC_FLOWS = {
+
+  // ── CRIME ─────────────────────────────────────────────────────
+  crime_theft_personal: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true,  placeholder:'e.g. Thabo Nkosi' },
+        { id:'idNumber',    label:'ID / Passport Number',         type:'text',     required:true,  placeholder:'13-digit ID number', keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true,  placeholder:'Street, Suburb, City' },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Incident Details', fields: [
+        { id:'date',        label:'Date of Theft',                type:'date',     required:true },
+        { id:'time',        label:'Approximate Time',             type:'time',     required:true },
+        { id:'location',    label:'Location / Address of Theft',  type:'text',     required:true,  placeholder:'e.g. Corner Main & First Street, Johannesburg' },
+        { id:'province',    label:'Province',                     type:'picker',   required:false, options:'PROVINCES' },
+      ]},
+      { title: 'Items Stolen', fields: [
+        { id:'items',       label:'Describe Items Stolen',        type:'textarea', required:true,  placeholder:'List each item, include make/model/serial numbers where possible' },
+        { id:'totalValue',  label:'Estimated Total Value (R)',    type:'text',     required:false, placeholder:'e.g. R 8 500', keyboard:'numeric' },
+        { id:'serialNums',  label:'Serial / IMEI Numbers (if known)', type:'text', required:false, placeholder:'e.g. IMEI: 356938035643809' },
+      ]},
+      { title: 'Circumstances', fields: [
+        { id:'circumstances', label:'Describe What Happened',     type:'textarea', required:true,  placeholder:'Describe clearly what happened leading up to, during, and after the theft' },
+        { id:'suspectDesc',   label:'Suspect Description (if seen)', type:'textarea', required:false, placeholder:'e.g. Male, approximately 25 years, wearing red jacket' },
+        { id:'witnessName',   label:'Witness Name (if any)',      type:'text',     required:false, placeholder:'Full name of witness' },
+        { id:'witnessCell',   label:'Witness Contact Number',     type:'text',     required:false, placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+        { id:'caseNumber',    label:'SAPS Case Number (if obtained)', type:'text', required:false, placeholder:'e.g. CAS 123/02/2025' },
+      ]},
+    ],
+  },
+
+  crime_theft_vehicle: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true,  placeholder:'Your full name' },
+        { id:'idNumber',    label:'ID / Passport Number',         type:'text',     required:true,  placeholder:'13-digit ID number', keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true,  placeholder:'Street, Suburb, City' },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Vehicle Details', fields: [
+        { id:'vehicleReg',  label:'Vehicle Registration',         type:'text',     required:true,  placeholder:'e.g. GP 123-456' },
+        { id:'vehicleMake', label:'Make',                         type:'text',     required:true,  placeholder:'e.g. Toyota' },
+        { id:'vehicleModel',label:'Model',                        type:'text',     required:true,  placeholder:'e.g. Hilux' },
+        { id:'vehicleColour',label:'Colour',                      type:'text',     required:true,  placeholder:'e.g. White' },
+        { id:'vehicleYear', label:'Year',                         type:'text',     required:false, placeholder:'e.g. 2020', keyboard:'numeric' },
+      ]},
+      { title: 'Incident Details', fields: [
+        { id:'date',           label:'Date of Incident',          type:'date',     required:true },
+        { id:'time',           label:'Approximate Time',          type:'time',     required:true },
+        { id:'location',       label:'Location / Address',        type:'text',     required:true,  placeholder:'Where did the theft occur?' },
+        { id:'theftType',      label:'What was stolen?',          type:'picker',   required:true,  options:['The entire vehicle','Items from inside the vehicle','Vehicle parts (wheels, catalytic converter, etc.)','Attempted theft — nothing taken'] },
+        { id:'itemsStolen',    label:'Describe Items / Damage',   type:'textarea', required:true,  placeholder:'Describe what was taken or what damage was caused' },
+        { id:'circumstances',  label:'Circumstances',             type:'textarea', required:true,  placeholder:'How did you discover the theft? What did you observe?' },
+        { id:'caseNumber',     label:'SAPS Case Number (if obtained)', type:'text',required:false, placeholder:'e.g. CAS 123/02/2025' },
+      ]},
+    ],
+  },
+
+  crime_theft_docs: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true,  placeholder:'Your full name' },
+        { id:'idNumber',    label:'ID Number (from memory)',       type:'text',     required:true,  placeholder:'13-digit SA ID number', keyboard:'phone-pad', maxLen:13 },
+        { id:'dob',         label:'Date of Birth',                type:'date',     required:true },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true,  placeholder:'Street, Suburb, City' },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Documents Stolen', fields: [
+        { id:'docsStolen',  label:'Which documents were stolen?', type:'picker',   required:true,  options:['ID Book','Smart ID Card','Passport',"Driver's Licence",'All of the above','Other combination'] },
+        { id:'docsOther',   label:'Other documents (specify)',    type:'text',     required:false, placeholder:'Describe any other documents stolen' },
+        { id:'passportNum', label:'Passport Number (if known)',   type:'text',     required:false, placeholder:'Passport number' },
+        { id:'licenceNum',  label:'Licence Number (if known)',    type:'text',     required:false, placeholder:"Driver's licence number" },
+      ]},
+      { title: 'Incident Details', fields: [
+        { id:'date',         label:'Date of Theft',               type:'date',     required:true },
+        { id:'time',         label:'Approximate Time',            type:'time',     required:false },
+        { id:'location',     label:'Location / Address',          type:'text',     required:true,  placeholder:'Where were the documents stolen?' },
+        { id:'circumstances',label:'Circumstances',               type:'textarea', required:true,  placeholder:'How were the documents stolen? What happened?' },
+        { id:'caseNumber',   label:'SAPS Case Number (if obtained)', type:'text',  required:false, placeholder:'e.g. CAS 123/02/2025' },
+      ]},
+    ],
+  },
+
+  crime_burglary_res: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true,  placeholder:'Your full name' },
+        { id:'idNumber',    label:'ID / Passport Number',         type:'text',     required:true,  placeholder:'13-digit ID number', keyboard:'phone-pad', maxLen:13 },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Property Details', fields: [
+        { id:'propertyAddress', label:'Address of Burglarised Property', type:'text', required:true, placeholder:'Full address' },
+        { id:'ownerOrTenant',   label:'Your status at this property',    type:'picker', required:true, options:['Owner','Tenant','Family Member','Caretaker'] },
+        { id:'province',        label:'Province',                        type:'picker', required:false, options:'PROVINCES' },
+      ]},
+      { title: 'Incident Details', fields: [
+        { id:'date',          label:'Date of Burglary',             type:'date',     required:true },
+        { id:'discoveredTime',label:'Time Discovered / Approximate Time of Entry', type:'time', required:false },
+        { id:'entryPoint',    label:'Point of Entry',               type:'textarea', required:true, placeholder:'e.g. Back bedroom window forced open; kitchen door lock broken' },
+        { id:'alarmSystem',   label:'Was a security/alarm system present?', type:'ynu', required:false },
+        { id:'alarmDetails',  label:'Alarm / security details',     type:'text',     required:false, placeholder:'e.g. ADT alarm, armed response, electric fence' },
+      ]},
+      { title: 'Items Stolen', fields: [
+        { id:'itemsStolen',   label:'Describe All Items Stolen',    type:'textarea', required:true, placeholder:'List items — include make, model, serial numbers, estimated value' },
+        { id:'totalValue',    label:'Estimated Total Value (R)',    type:'text',     required:false, placeholder:'e.g. R 45 000', keyboard:'numeric' },
+        { id:'damageDesc',    label:'Property Damage Caused',       type:'textarea', required:false, placeholder:'Describe any damage caused during the break-in' },
+        { id:'caseNumber',    label:'SAPS Case Number',             type:'text',     required:false, placeholder:'e.g. CAS 123/02/2025' },
+      ]},
+    ],
+  },
+
+  crime_burglary_biz: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true,  placeholder:'Your full name' },
+        { id:'idNumber',    label:'ID / Passport Number',         type:'text',     required:true,  placeholder:'13-digit ID number', keyboard:'phone-pad', maxLen:13 },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+        { id:'role',        label:'Your role at the business',    type:'text',     required:true,  placeholder:'e.g. Owner, Manager, Director' },
+      ]},
+      { title: 'Business Details', fields: [
+        { id:'bizName',     label:'Business Name',                type:'text',     required:true,  placeholder:'Registered business name' },
+        { id:'bizAddress',  label:'Business Address',             type:'text',     required:true,  placeholder:'Full business address' },
+        { id:'bizReg',      label:'Business Registration Number', type:'text',     required:false, placeholder:'e.g. 2010/123456/07' },
+        { id:'province',    label:'Province',                     type:'picker',   required:false, options:'PROVINCES' },
+      ]},
+      { title: 'Incident Details', fields: [
+        { id:'date',         label:'Date of Burglary',            type:'date',     required:true },
+        { id:'discoveredBy', label:'Who discovered the break-in?',type:'text',     required:true, placeholder:'Name and relationship to the business' },
+        { id:'entryPoint',   label:'Point of Entry',              type:'textarea', required:true, placeholder:'e.g. Back storeroom door, roller shutter forced' },
+        { id:'securityDesc', label:'Security measures in place',  type:'textarea', required:false, placeholder:'e.g. CCTV cameras, alarm system, security guard, electric fence' },
+        { id:'itemsStolen',  label:'Items / Cash / Stock Stolen', type:'textarea', required:true, placeholder:'List all stolen items with estimated values' },
+        { id:'totalValue',   label:'Estimated Total Value (R)',   type:'text',     required:false, placeholder:'e.g. R 120 000', keyboard:'numeric' },
+        { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false, placeholder:'e.g. CAS 123/02/2025' },
+      ]},
+    ],
+  },
+
+  crime_burglary_attempt: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true,  placeholder:'Your full name' },
+        { id:'idNumber',    label:'ID / Passport Number',         type:'text',     required:true,  placeholder:'13-digit ID number', keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Your Address',                 type:'text',     required:true,  placeholder:'Street, Suburb, City' },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Incident Details', fields: [
+        { id:'date',         label:'Date of Attempted Burglary',  type:'date',     required:true },
+        { id:'time',         label:'Approximate Time',            type:'time',     required:false },
+        { id:'attemptPoint', label:'Point of Attempted Entry',    type:'textarea', required:true, placeholder:'e.g. Front door lock tampered with; window frame forced but not opened' },
+        { id:'circumstances',label:'What happened?',              type:'textarea', required:true, placeholder:'Describe how you discovered the attempt and what you observed' },
+        { id:'suspectDesc',  label:'Suspect Description (if seen)', type:'textarea', required:false, placeholder:'Physical description, clothing, vehicle used' },
+        { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false, placeholder:'e.g. CAS 123/02/2025' },
+      ]},
+    ],
+  },
+
+  crime_assault: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true,  placeholder:'Your full name' },
+        { id:'idNumber',    label:'ID / Passport Number',         type:'text',     required:true,  placeholder:'13-digit ID number', keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true,  placeholder:'Street, Suburb, City' },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Incident Details', fields: [
+        { id:'date',          label:'Date of Assault',            type:'date',     required:true },
+        { id:'time',          label:'Approximate Time',           type:'time',     required:true },
+        { id:'location',      label:'Location / Address',         type:'text',     required:true, placeholder:'Where did the assault occur?' },
+        { id:'province',      label:'Province',                   type:'picker',   required:false, options:'PROVINCES' },
+      ]},
+      { title: 'Attacker Details', fields: [
+        { id:'attackerKnown', label:'Is the attacker known to you?', type:'ynu',  required:true },
+        { id:'attackerName',  label:"Attacker's Name (if known)",  type:'text',  required:false, placeholder:'Full name if known' },
+        { id:'attackerDesc',  label:'Physical Description',         type:'textarea', required:true, placeholder:'e.g. Male, approx 30 years, 1.8m tall, wearing blue jeans and black hoodie' },
+        { id:'weaponUsed',    label:'Was a weapon used?',           type:'ynu',   required:true },
+        { id:'weaponDesc',    label:'Describe the weapon',          type:'text',  required:false, placeholder:'e.g. Kitchen knife, iron rod, firearm' },
+      ]},
+      { title: 'Injuries & Aftermath', fields: [
+        { id:'injuries',      label:'Describe Your Injuries',       type:'textarea', required:true, placeholder:'e.g. Bruising to face, laceration on left arm, broken nose' },
+        { id:'medicalTreatment', label:'Did you receive medical treatment?', type:'ynu', required:true },
+        { id:'hospital',      label:'Hospital / Clinic Name',       type:'text',  required:false, placeholder:'Where were you treated?' },
+        { id:'circumstances', label:'Full Circumstances',           type:'textarea', required:true, placeholder:'Describe the full sequence of events before, during, and after the assault' },
+        { id:'witnessName',   label:'Witness Name (if any)',        type:'text',  required:false, placeholder:'Witness full name' },
+        { id:'witnessCell',   label:'Witness Contact',              type:'text',  required:false, placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+        { id:'caseNumber',    label:'SAPS Case Number',             type:'text',  required:false, placeholder:'e.g. CAS 123/02/2025' },
+      ]},
+    ],
+  },
+
+  crime_assault_gbh: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true,  placeholder:'Your full name' },
+        { id:'idNumber',    label:'ID / Passport Number',         type:'text',     required:true,  placeholder:'13-digit ID number', keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true,  placeholder:'Street, Suburb, City' },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Incident Details', fields: [
+        { id:'date',         label:'Date of Assault',             type:'date',     required:true },
+        { id:'time',         label:'Approximate Time',            type:'time',     required:true },
+        { id:'location',     label:'Location / Address',          type:'text',     required:true, placeholder:'Where did the assault occur?' },
+      ]},
+      { title: 'Attacker & Weapon', fields: [
+        { id:'attackerKnown',label:'Is the attacker known to you?', type:'ynu',   required:true },
+        { id:'attackerName', label:"Attacker's Name (if known)", type:'text',    required:false, placeholder:'Full name if known' },
+        { id:'attackerDesc', label:'Physical Description',         type:'textarea', required:true, placeholder:'Detailed description of the attacker' },
+        { id:'weaponDesc',   label:'Weapon / Object Used',         type:'textarea', required:true, placeholder:'Describe in detail the weapon or object used' },
+        { id:'numAttackers', label:'Number of attackers',          type:'text',    required:true, placeholder:'e.g. 1, 2, 3 or more', keyboard:'numeric' },
+      ]},
+      { title: 'Injuries & Medical', fields: [
+        { id:'injuries',     label:'Describe Injuries in Detail', type:'textarea', required:true, placeholder:'Describe all injuries — be as specific as possible' },
+        { id:'hospital',     label:'Hospital / Clinic Name',      type:'text',     required:true, placeholder:'Where were you treated?' },
+        { id:'admissionDate',label:'Date of Admission',           type:'date',     required:false },
+        { id:'medNotes',     label:'Medical notes or diagnosis',  type:'textarea', required:false, placeholder:'Any diagnosis or prognosis provided by medical staff' },
+        { id:'circumstances',label:'Full Circumstances',          type:'textarea', required:true, placeholder:'Full sequence of events' },
+        { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false, placeholder:'e.g. CAS 123/02/2025' },
+      ]},
+    ],
+  },
+
+  crime_threats: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true,  placeholder:'Your full name' },
+        { id:'idNumber',    label:'ID / Passport Number',         type:'text',     required:true,  placeholder:'13-digit ID number', keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true,  placeholder:'Street, Suburb, City' },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Perpetrator Details', fields: [
+        { id:'perpName',    label:'Name of Person Making Threats', type:'text',    required:false, placeholder:'Full name if known' },
+        { id:'perpRelation',label:'Your Relationship to Them',    type:'text',    required:false, placeholder:'e.g. Ex-partner, neighbour, colleague, unknown' },
+        { id:'perpAddress', label:'Their Address (if known)',     type:'text',    required:false, placeholder:'Address of perpetrator' },
+        { id:'perpDesc',    label:'Physical Description (if unknown)', type:'textarea', required:false, placeholder:'Description if identity is unknown' },
+      ]},
+      { title: 'Threat Details', fields: [
+        { id:'firstIncident',label:'Date of First Incident',      type:'date',     required:true },
+        { id:'lastIncident', label:'Date of Most Recent Incident',type:'date',     required:true },
+        { id:'method',       label:'Method of Threats',           type:'picker',   required:true,  options:['Verbal — in person','Verbal — by phone','Written — letters or notes','Electronic — WhatsApp / SMS / Email','Social media','Combination of methods'] },
+        { id:'threatContent',label:'Content of Threats',          type:'textarea', required:true,  placeholder:'Describe as accurately as possible what was said or written' },
+        { id:'frequency',    label:'How often have threats occurred?', type:'text', required:true, placeholder:'e.g. Daily for the past 2 weeks, 3 separate incidents' },
+        { id:'evidence',     label:'Evidence Available',          type:'textarea', required:false, placeholder:'e.g. Screenshots of messages, voicemail recordings, witness names' },
+        { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false, placeholder:'e.g. CAS 123/02/2025' },
+      ]},
+    ],
+  },
+
+  crime_fraud_accounts: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true,  placeholder:'Your full name' },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  placeholder:'13-digit SA ID number', keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true,  placeholder:'Street, Suburb, City' },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Fraudulent Accounts', fields: [
+        { id:'discoveredDate', label:'When did you discover the fraud?', type:'date', required:true },
+        { id:'howDiscovered',  label:'How was it discovered?',    type:'textarea', required:true,  placeholder:'e.g. Credit bureau check, bank notification, debt collector call' },
+        { id:'accounts',       label:'Details of Fraudulent Accounts', type:'textarea', required:true, placeholder:'List each account: institution name, account type, amount, date opened' },
+        { id:'totalExposure',  label:'Total Financial Exposure (R)', type:'text', required:false, placeholder:'e.g. R 85 000', keyboard:'numeric' },
+        { id:'suspectedPerp',  label:'Suspected Perpetrator (if known)', type:'text', required:false, placeholder:'Name or relationship if known' },
+        { id:'actionsTaken',   label:'Actions Already Taken',    type:'textarea', required:false, placeholder:'e.g. Contacted bank, placed fraud alert on credit bureau, reported to police' },
+        { id:'caseNumber',     label:'SAPS Case Number',          type:'text',     required:false, placeholder:'e.g. CAS 123/02/2025' },
+      ]},
+    ],
+  },
+
+  crime_fraud_financial: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Fraud Details', fields: [
+        { id:'institution',  label:'Financial Institution',       type:'text',     required:true,  placeholder:'Bank or institution name' },
+        { id:'accountNum',   label:'Account Number (last 4 digits)', type:'text', required:false, placeholder:'Last 4 digits only for security' },
+        { id:'transactions', label:'Unauthorized Transactions',   type:'textarea', required:true,  placeholder:'List each transaction: date, amount, description' },
+        { id:'totalAmount',  label:'Total Unauthorized Amount (R)', type:'text',  required:false, placeholder:'e.g. R 12 500', keyboard:'numeric' },
+        { id:'discoveredDate',label:'When Discovered',            type:'date',     required:true },
+        { id:'circumstances',label:'Circumstances',               type:'textarea', required:true,  placeholder:'How the fraud occurred or was discovered' },
+        { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false },
+      ]},
+    ],
+  },
+
+  crime_fraud_docs: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Document Fraud Details', fields: [
+        { id:'docType',      label:'Type of Document Involved',   type:'text',     required:true,  placeholder:'e.g. ID, contract, title deed, payslip' },
+        { id:'forgerydesc',  label:'Nature of Forgery / Falsification', type:'textarea', required:true, placeholder:'Describe how the document was forged, altered, or misused' },
+        { id:'discoveredDate',label:'When Discovered',            type:'date',     required:true },
+        { id:'howDiscovered',label:'How Discovered',              type:'textarea', required:true,  placeholder:'How did you find out about the forgery?' },
+        { id:'perpetrator',  label:'Suspected Perpetrator',       type:'text',     required:false, placeholder:'Name or description if known' },
+        { id:'damage',       label:'Harm or Damage Suffered',     type:'textarea', required:true,  placeholder:'What loss, harm, or damage resulted from the fraud?' },
+        { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false },
+      ]},
+    ],
+  },
+
+  crime_fraud_info: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Misuse Details', fields: [
+        { id:'infoType',     label:'What information was misused?', type:'textarea', required:true, placeholder:'e.g. ID number, address, phone number, banking details' },
+        { id:'howUsed',      label:'How was it used without consent?', type:'textarea', required:true, placeholder:'Describe how your information was used' },
+        { id:'discoveredDate',label:'When Discovered',            type:'date',     required:true },
+        { id:'perpetrator',  label:'Suspected Perpetrator',       type:'text',     required:false },
+        { id:'harm',         label:'Harm or Damage Suffered',     type:'textarea', required:true },
+        { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false },
+      ]},
+    ],
+  },
+
+  crime_damage_malicious: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Your Address',                 type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Damage Details', fields: [
+        { id:'date',         label:'Date of Incident',            type:'date',     required:true },
+        { id:'time',         label:'Approximate Time',            type:'time',     required:false },
+        { id:'propertyAddr', label:'Address of Damaged Property', type:'text',     required:true },
+        { id:'damageDesc',   label:'Describe Damage in Detail',   type:'textarea', required:true,  placeholder:'What was damaged, how, and estimated repair cost' },
+        { id:'repairValue',  label:'Estimated Repair Value (R)',  type:'text',     required:false, keyboard:'numeric' },
+        { id:'perpetrator',  label:'Perpetrator (if known)',      type:'text',     required:false },
+        { id:'circumstances',label:'Circumstances',               type:'textarea', required:true,  placeholder:'How did the damage occur? Was there a dispute or motive?' },
+        { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false },
+      ]},
+    ],
+  },
+
+  crime_damage_vandalism: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Your Address',                 type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Vandalism Details', fields: [
+        { id:'date',         label:'Date Discovered / Occurred',  type:'date',     required:true },
+        { id:'propertyAddr', label:'Address of Affected Property',type:'text',     required:true },
+        { id:'vandalismDesc',label:'Describe the Vandalism',      type:'textarea', required:true,  placeholder:'e.g. Graffiti sprayed on front wall, windows smashed, gate broken' },
+        { id:'repairValue',  label:'Estimated Repair/Cleaning Cost (R)', type:'text', required:false, keyboard:'numeric' },
+        { id:'cctv',         label:'Is CCTV available in the area?', type:'ynu',   required:false },
+        { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false },
+      ]},
+    ],
+  },
+
+  // ── DOCUMENTS ─────────────────────────────────────────────────
+  doc_lost_id: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number (from memory)',       type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'dob',         label:'Date of Birth',                type:'date',     required:true },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Lost Document Details', fields: [
+        { id:'docType',      label:'Document Type',               type:'picker',   required:true,  options:['ID Book (Green Barcoded)','Smart ID Card','Both'] },
+        { id:'date',         label:'Date Lost / Stolen',          type:'date',     required:true },
+        { id:'lossType',     label:'How was it lost?',            type:'picker',   required:true,  options:['Misplaced / Lost','Stolen','Destroyed / Damaged'] },
+        { id:'location',     label:'Where was it lost?',          type:'text',     required:false, placeholder:'Location where lost or stolen' },
+        { id:'circumstances',label:'Circumstances',               type:'textarea', required:true,  placeholder:'Describe how the document was lost, stolen, or destroyed' },
+        { id:'caseNumber',   label:'SAPS Case Number (if stolen)',type:'text',     required:false },
+      ]},
+    ],
+  },
+
+  doc_lost_passport: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'dob',         label:'Date of Birth',                type:'date',     required:true },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+        { id:'nationality', label:'Nationality',                  type:'text',     required:true,  placeholder:'e.g. South African' },
+      ]},
+      { title: 'Passport Details', fields: [
+        { id:'passportNum',  label:'Passport Number (if known)',  type:'text',     required:false },
+        { id:'issueDate',    label:'Issue Date (if known)',       type:'date',     required:false },
+        { id:'date',         label:'Date Lost / Stolen',          type:'date',     required:true },
+        { id:'lossType',     label:'How was it lost?',            type:'picker',   required:true,  options:['Misplaced / Lost','Stolen','Destroyed / Damaged'] },
+        { id:'location',     label:'Where was it lost?',          type:'text',     required:false },
+        { id:'circumstances',label:'Circumstances',               type:'textarea', required:true },
+        { id:'caseNumber',   label:'SAPS Case Number (if stolen)',type:'text',     required:false },
+      ]},
+    ],
+  },
+
+  doc_lost_licence: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'dob',         label:'Date of Birth',                type:'date',     required:true },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Licence Details', fields: [
+        { id:'licenceNum',   label:'Licence Number (if known)',   type:'text',     required:false },
+        { id:'licenceCode',  label:'Licence Code',                type:'picker',   required:false, options:['Code 8 (Motor Vehicle)','Code 10 (Trucks)','Code 14 (Articulated Trucks)','Motorcycle','Other'] },
+        { id:'date',         label:'Date Lost / Stolen',          type:'date',     required:true },
+        { id:'lossType',     label:'How was it lost?',            type:'picker',   required:true,  options:['Misplaced / Lost','Stolen','Destroyed / Damaged'] },
+        { id:'location',     label:'Where was it lost?',          type:'text',     required:false },
+        { id:'circumstances',label:'Circumstances',               type:'textarea', required:true },
+        { id:'caseNumber',   label:'SAPS Case Number (if stolen)',type:'text',     required:false },
+      ]},
+    ],
+  },
+
+  doc_lost_bankcard: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Card Details', fields: [
+        { id:'bankName',     label:'Bank Name',                   type:'text',     required:true,  placeholder:'e.g. FNB, ABSA, Standard Bank, Nedbank, Capitec' },
+        { id:'cardType',     label:'Card Type',                   type:'picker',   required:true,  options:['Debit Card','Credit Card','Cheque Card','Both Debit and Credit'] },
+        { id:'lastFour',     label:'Last 4 Digits of Card',       type:'text',     required:false, keyboard:'phone-pad', maxLen:4, placeholder:'Last 4 digits only' },
+        { id:'cardCancelled',label:'Has the card been cancelled?',type:'ynu',      required:true },
+        { id:'date',         label:'Date Lost / Stolen',          type:'date',     required:true },
+        { id:'lossType',     label:'How was it lost?',            type:'picker',   required:true,  options:['Misplaced / Lost','Stolen'] },
+        { id:'circumstances',label:'Circumstances',               type:'textarea', required:true },
+        { id:'caseNumber',   label:'SAPS Case Number (if stolen)',type:'text',     required:false },
+      ]},
+    ],
+  },
+
+  doc_lost_access: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+        { id:'employer',    label:'Employer / Company',           type:'text',     required:true,  placeholder:'Name of employer or organisation' },
+        { id:'role',        label:'Your Role / Position',         type:'text',     required:true },
+      ]},
+      { title: 'Card Details', fields: [
+        { id:'cardRef',      label:'Card Reference / Number',     type:'text',     required:false, placeholder:'Reference number if known' },
+        { id:'date',         label:'Date Lost / Stolen',          type:'date',     required:true },
+        { id:'lossType',     label:'How was it lost?',            type:'picker',   required:true,  options:['Misplaced / Lost','Stolen'] },
+        { id:'circumstances',label:'Circumstances',               type:'textarea', required:true },
+        { id:'reportedTo',   label:'Reported to (employer / security)', type:'text', required:false, placeholder:'Name and designation of person reported to' },
+      ]},
+    ],
+  },
+
+  doc_lost_vehicle: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Vehicle Details', fields: [
+        { id:'vehicleReg',  label:'Vehicle Registration',         type:'text',     required:true },
+        { id:'vehicleMake', label:'Make',                         type:'text',     required:true },
+        { id:'vehicleModel',label:'Model',                        type:'text',     required:true },
+        { id:'vehicleYear', label:'Year',                         type:'text',     required:false, keyboard:'numeric' },
+      ]},
+      { title: 'Lost Documents', fields: [
+        { id:'docsLost',     label:'Documents Lost',              type:'picker',   required:true,  options:['Registration Certificate (RC1)','Licence Disc','Both RC1 and Licence Disc','Roadworthy Certificate','Other'] },
+        { id:'date',         label:'Date Lost',                   type:'date',     required:true },
+        { id:'circumstances',label:'Circumstances',               type:'textarea', required:true },
+        { id:'caseNumber',   label:'SAPS Case Number (if stolen)',type:'text',     required:false },
+      ]},
+    ],
+  },
+
+  // ── FINANCIAL ─────────────────────────────────────────────────
+  fin_property_loss: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Your Address',                 type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Property Details', fields: [
+        { id:'propertyAddr', label:'Address of Property Lost/Damaged', type:'text', required:true },
+        { id:'causeOfLoss',  label:'Cause of Loss',               type:'picker',   required:true,  options:['Fire','Flood','Storm / Natural Disaster','Accident','Other'] },
+        { id:'date',         label:'Date of Incident',            type:'date',     required:true },
+        { id:'itemsLost',    label:'Items Lost / Damaged',        type:'textarea', required:true,  placeholder:'List all items with estimated values' },
+        { id:'totalValue',   label:'Total Estimated Value (R)',   type:'text',     required:false, keyboard:'numeric' },
+        { id:'insurer',      label:'Insurance Company (if any)',  type:'text',     required:false },
+        { id:'policyNum',    label:'Policy Number',               type:'text',     required:false },
+        { id:'circumstances',label:'Full Circumstances',          type:'textarea', required:true },
+      ]},
+    ],
+  },
+
+  fin_income_verify: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Employment & Income', fields: [
+        { id:'employerName', label:'Employer Name',               type:'text',     required:true },
+        { id:'employerAddr', label:'Employer Address',            type:'text',     required:true },
+        { id:'occupation',   label:'Occupation / Job Title',      type:'text',     required:true },
+        { id:'employedSince',label:'Employed Since',              type:'date',     required:false },
+        { id:'monthlyIncome',label:'Monthly Income (R)',          type:'text',     required:true,  keyboard:'numeric' },
+        { id:'incomeType',   label:'Income Type',                 type:'picker',   required:true,  options:['Permanent Salaried Employment','Contract Employment','Self-Employed','Freelance / Commission','Social Grant','Other'] },
+        { id:'purpose',      label:'Purpose of This Statement',   type:'text',     required:true,  placeholder:'e.g. Home loan application, rental application' },
+      ]},
+    ],
+  },
+
+  fin_employment: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Employment Details', fields: [
+        { id:'employerName', label:'Employer Name',               type:'text',     required:true },
+        { id:'employerAddr', label:'Employer Address',            type:'text',     required:true },
+        { id:'occupation',   label:'Position / Job Title',        type:'text',     required:true },
+        { id:'changeType',   label:'Nature of Employment Change', type:'picker',   required:true,  options:['Resignation','Retrenchment','Dismissal / Termination','Suspension','Change in Job Title / Duties','Other'] },
+        { id:'changeDate',   label:'Date Change Took Effect',     type:'date',     required:true },
+        { id:'explanation',  label:'Explanation of Circumstances',type:'textarea', required:true,  placeholder:'Describe the circumstances of the employment change in full' },
+        { id:'purpose',      label:'Purpose of This Statement',   type:'text',     required:true,  placeholder:'e.g. UIF application, bank query' },
+      ]},
+    ],
+  },
+
+  fin_insurance: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Insurance Details', fields: [
+        { id:'insurer',      label:'Insurance Company',           type:'text',     required:true },
+        { id:'policyNum',    label:'Policy Number',               type:'text',     required:true },
+        { id:'claimType',    label:'Type of Claim',               type:'text',     required:true,  placeholder:'e.g. Vehicle damage, household contents, building' },
+        { id:'date',         label:'Date of Incident',            type:'date',     required:true },
+        { id:'itemsAffected',label:'Items / Property Affected',   type:'textarea', required:true },
+        { id:'damageDesc',   label:'Description of Loss / Damage',type:'textarea', required:true },
+        { id:'totalValue',   label:'Estimated Claim Value (R)',   type:'text',     required:false, keyboard:'numeric' },
+        { id:'circumstances',label:'Full Circumstances',          type:'textarea', required:true },
+      ]},
+    ],
+  },
+
+  // ── PERSONAL ──────────────────────────────────────────────────
+  pers_address: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+        { id:'address',     label:'Full Residential Address',     type:'textarea', required:true,  placeholder:'Street number, Street name, Suburb, City, Postal Code' },
+        { id:'residingSince',label:'Residing at this address since', type:'date',  required:false },
+        { id:'ownerOrTenant',label:'Status at address',           type:'picker',   required:true,  options:['Owner','Tenant','Family Member','Guest / Visitor'] },
+        { id:'landlordName', label:'Landlord / Owner Name (if tenant)', type:'text', required:false },
+        { id:'purpose',      label:'Purpose of Proof of Address', type:'text',     required:true,  placeholder:'e.g. FICA, bank account, SASSA application' },
+      ]},
+    ],
+  },
+
+  pers_residency: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID / Passport Number',         type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+        { id:'nationality', label:'Nationality',                  type:'text',     required:true },
+        { id:'address',     label:'Current Address in South Africa', type:'textarea', required:true },
+        { id:'status',      label:'Residency Status',             type:'picker',   required:true,  options:['Student','Tenant','Visitor','Permanent Resident','Work Permit Holder','Other'] },
+        { id:'residingSince',label:'Residing at address since',   type:'date',     required:false },
+        { id:'hostName',    label:'Host / Institution Name (if applicable)', type:'text', required:false },
+        { id:'purpose',     label:'Purpose of Statement',         type:'text',     required:true,  placeholder:'e.g. Student registration, lease agreement, visa application' },
+      ]},
+    ],
+  },
+
+  pers_incident: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID / Passport Number',         type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Incident Details', fields: [
+        { id:'date',         label:'Date of Incident',            type:'date',     required:true },
+        { id:'time',         label:'Approximate Time',            type:'time',     required:false },
+        { id:'location',     label:'Location / Address',          type:'text',     required:true },
+        { id:'incidentDesc', label:'Description of Incident',     type:'textarea', required:true,  placeholder:'Describe what happened in full detail, chronologically' },
+        { id:'partiesInvolved', label:'Other Parties Involved',   type:'textarea', required:false, placeholder:'Names and details of any other people involved' },
+        { id:'witnesses',    label:'Witnesses',                   type:'textarea', required:false },
+        { id:'purpose',      label:'Purpose / Intended Recipient',type:'text',     required:true,  placeholder:'e.g. Insurance, school, employer, court' },
+      ]},
+    ],
+  },
+
+  pers_guardianship: {
+    sections: [
+      { title: 'Guardian Details', fields: [
+        { id:'fullName',    label:'Guardian Full Name',           type:'text',     required:true },
+        { id:'idNumber',    label:'Guardian ID Number',           type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: "Minor's Details", fields: [
+        { id:'minorName',    label:"Minor's Full Name",          type:'text',     required:true },
+        { id:'minorDob',     label:"Minor's Date of Birth",      type:'date',     required:true },
+        { id:'minorId',      label:"Minor's ID Number (if issued)", type:'text',  required:false, keyboard:'phone-pad', maxLen:13 },
+        { id:'relationship', label:'Your Relationship to the Minor', type:'picker', required:true, options:['Parent (Mother)','Parent (Father)','Legal Guardian','Grandparent','Aunt / Uncle','Other'] },
+        { id:'guardianshipReason', label:'Reason for Guardianship Statement', type:'text', required:true, placeholder:'e.g. School enrolment, medical treatment, travel with minor' },
+        { id:'otherParentInfo', label:'Other Parent / Guardian Details (if applicable)', type:'textarea', required:false, placeholder:'Name and contact details of other parent or legal guardian' },
+        { id:'purpose',      label:'Purpose of Statement',        type:'text',     required:true,  placeholder:'e.g. School registration, passport application, travel consent' },
+      ]},
+    ],
+  },
+
+  pers_household: {
+    sections: [
+      { title: 'Head of Household', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'textarea', required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Household Details', fields: [
+        { id:'numAdults',    label:'Number of Adults in Household', type:'text',   required:true,  keyboard:'numeric' },
+        { id:'numChildren',  label:'Number of Children in Household', type:'text', required:true,  keyboard:'numeric' },
+        { id:'householdMembers', label:'Household Members (names and ages)', type:'textarea', required:true, placeholder:'List each member: name, age, relationship' },
+        { id:'monthlyIncome',label:'Combined Monthly Household Income (R)', type:'text', required:false, keyboard:'numeric' },
+        { id:'circumstances',label:'Description of Household Circumstances', type:'textarea', required:true, placeholder:'Describe relevant household circumstances in full' },
+        { id:'purpose',      label:'Purpose of Statement',        type:'text',     required:true,  placeholder:'e.g. SASSA, social worker, housing application' },
+      ]},
+    ],
+  },
+
+  // ── LEGAL ─────────────────────────────────────────────────────
+  legal_witness: {
+    sections: [
+      { title: 'Witness Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+        { id:'occupation',  label:'Occupation',                   type:'text',     required:false },
+      ]},
+      { title: 'Matter Details', fields: [
+        { id:'caseRef',      label:'Case Reference / Number',     type:'text',     required:false },
+        { id:'court',        label:'Court / SAPS Station',        type:'text',     required:false },
+        { id:'relationship', label:'Your Relationship to the Matter', type:'picker', required:true, options:['Bystander / Witness','Victim','Accused','Expert Witness','Other'] },
+      ]},
+      { title: 'Witness Account', fields: [
+        { id:'date',         label:'Date of Incident Witnessed',  type:'date',     required:true },
+        { id:'time',         label:'Approximate Time',            type:'time',     required:false },
+        { id:'location',     label:'Location / Address',          type:'text',     required:true },
+        { id:'witnessAccount', label:'Full Account of What You Witnessed', type:'textarea', required:true, placeholder:'Describe in full and in chronological order exactly what you witnessed. Be as specific and factual as possible.' },
+        { id:'partiesInvolved', label:'Parties Involved',         type:'textarea', required:false, placeholder:'Names and descriptions of parties you witnessed' },
+      ]},
+    ],
+  },
+
+  legal_court_docs: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Case & Document Details', fields: [
+        { id:'caseNum',      label:'Case Number (if known)',      type:'text',     required:false },
+        { id:'courtName',    label:'Court Name and Location',     type:'text',     required:false },
+        { id:'docsLost',     label:'Documents Lost',              type:'textarea', required:true,  placeholder:'Describe the documents that were lost' },
+        { id:'dateLost',     label:'When Were the Documents Lost?', type:'date',   required:true },
+        { id:'circumstances',label:'Circumstances of Loss',       type:'textarea', required:true },
+        { id:'attorney',     label:'Attorney Name and Firm',      type:'text',     required:false },
+      ]},
+    ],
+  },
+
+  legal_sars: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'taxRef',      label:'Tax Reference Number',         type:'text',     required:true },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'SARS Matter Details', fields: [
+        { id:'taxYear',      label:'Tax Year in Question',        type:'text',     required:true,  placeholder:'e.g. 2024/2025' },
+        { id:'sarsType',     label:'Nature of SARS Matter',       type:'picker',   required:true,  options:['Lost IRP5 / Certificate','Unknown Bank Deposit','Income Discrepancy','Other Tax Declaration'] },
+        { id:'employerName', label:'Employer Name (if IRP5-related)', type:'text', required:false },
+        { id:'explanation',  label:'Full Explanation',            type:'textarea', required:true,  placeholder:'Describe the matter in full for SARS purposes' },
+      ]},
+    ],
+  },
+
+  legal_labour: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Employment & Labour Details', fields: [
+        { id:'employerName', label:'Previous Employer Name',      type:'text',     required:true },
+        { id:'employerAddr', label:'Employer Address',            type:'text',     required:true },
+        { id:'startDate',    label:'Employment Start Date',       type:'date',     required:false },
+        { id:'endDate',      label:'Employment End Date',         type:'date',     required:false },
+        { id:'uifRef',       label:'UIF Reference Number (if known)', type:'text', required:false },
+        { id:'docsLost',     label:'Documents / Records Lost',    type:'textarea', required:true,  placeholder:'Describe the employment records that are unavailable' },
+        { id:'explanation',  label:'Full Explanation',            type:'textarea', required:true },
+        { id:'purpose',      label:'Purpose of Statement',        type:'text',     required:true,  placeholder:'e.g. UIF claim, CCMA proceedings' },
+      ]},
+    ],
+  },
+
+  // ── OTHER ─────────────────────────────────────────────────────
+  other_parcel: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Your Address',                 type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Parcel Details', fields: [
+        { id:'courier',      label:'Courier / Transport Company', type:'text',     required:true,  placeholder:'e.g. The Courier Guy, PostNet, DHL, Aramex' },
+        { id:'trackingNum',  label:'Tracking / Reference Number', type:'text',     required:false },
+        { id:'sentDate',     label:'Date Sent',                   type:'date',     required:false },
+        { id:'expectedDate', label:'Expected Delivery Date',      type:'date',     required:false },
+        { id:'parcelDesc',   label:'Contents of Parcel',          type:'textarea', required:true,  placeholder:'Describe all contents including estimated value of each item' },
+        { id:'totalValue',   label:'Total Estimated Value (R)',   type:'text',     required:false, keyboard:'numeric' },
+        { id:'circumstances',label:'Circumstances of Loss',       type:'textarea', required:true,  placeholder:'When and how did you discover the parcel was lost or damaged?' },
+      ]},
+    ],
+  },
+
+  other_suspicious: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Your Address',                 type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Suspicious Activity', fields: [
+        { id:'date',         label:'Date Observed',               type:'date',     required:true },
+        { id:'time',         label:'Time Observed',               type:'time',     required:true },
+        { id:'observedAt',   label:'Address / Location Observed', type:'text',     required:true },
+        { id:'activityDesc', label:'Describe the Suspicious Activity', type:'textarea', required:true, placeholder:'What did you observe? Be specific about behaviours, vehicles, and persons.' },
+        { id:'personDesc',   label:'Description of Suspicious Person(s)', type:'textarea', required:false, placeholder:'Physical description, clothing, approximate age, sex' },
+        { id:'vehicleDesc',  label:'Vehicle Description (if any)',type:'text',     required:false, placeholder:'Make, model, colour, registration if observed' },
+        { id:'priorReports', label:'Previously reported similar activity?', type:'ynu', required:false },
+        { id:'caseNumber',   label:'SAPS Case Number (if reported)', type:'text',  required:false },
+      ]},
+    ],
+  },
+
+  other_workplace: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+        { id:'occupation',  label:'Occupation / Job Title',       type:'text',     required:true },
+      ]},
+      { title: 'Employer Details', fields: [
+        { id:'employerName', label:'Employer Name',               type:'text',     required:true },
+        { id:'workplaceAddr',label:'Workplace Address',           type:'text',     required:true },
+        { id:'supervisorName',label:'Supervisor Name',            type:'text',     required:false },
+        { id:'supervisorCell',label:'Supervisor Contact',         type:'text',     required:false, keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Incident Details', fields: [
+        { id:'date',         label:'Date of Incident',            type:'date',     required:true },
+        { id:'time',         label:'Approximate Time',            type:'time',     required:true },
+        { id:'incidentLocation', label:'Exact Location in Workplace', type:'text', required:true, placeholder:'e.g. Warehouse floor, reception area, machine room' },
+        { id:'incidentDesc', label:'Full Description of Incident',type:'textarea', required:true,  placeholder:'Describe what happened in full chronological detail' },
+        { id:'injuries',     label:'Injuries Sustained',         type:'textarea', required:false, placeholder:'Describe any injuries; write "None" if no injuries' },
+        { id:'medicalTreatment', label:'Medical treatment received?', type:'ynu', required:false },
+        { id:'witnessName',  label:'Witness Name',               type:'text',     required:false },
+        { id:'witnessCell',  label:'Witness Contact',            type:'text',     required:false, keyboard:'phone-pad', maxLen:10 },
+        { id:'reportedToEmployer', label:'Reported to employer?', type:'ynu',     required:false },
+        { id:'caseNumber',   label:'SAPS Case Number (if applicable)', type:'text', required:false },
+      ]},
+    ],
+  },
+
+  other_animal: {
+    sections: [
+      { title: 'Your Details', fields: [
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true },
+        { id:'idNumber',    label:'ID Number',                    type:'text',     required:true,  keyboard:'phone-pad', maxLen:13 },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  keyboard:'phone-pad', maxLen:10 },
+      ]},
+      { title: 'Incident Details', fields: [
+        { id:'date',         label:'Date of Incident',            type:'date',     required:true },
+        { id:'time',         label:'Approximate Time',            type:'time',     required:false },
+        { id:'location',     label:'Location / Address',          type:'text',     required:true },
+        { id:'animalType',   label:'Type of Animal',              type:'text',     required:true,  placeholder:'e.g. Dog, cat, snake, horse' },
+        { id:'animalDesc',   label:'Animal Description',          type:'text',     required:false, placeholder:'Breed, colour, size' },
+        { id:'ownerKnown',   label:'Is the animal owner known?',  type:'ynu',      required:true },
+        { id:'ownerName',    label:'Owner Name (if known)',        type:'text',     required:false },
+        { id:'ownerAddress', label:'Owner Address (if known)',     type:'text',     required:false },
+        { id:'incidentType', label:'Nature of Incident',          type:'picker',   required:true,  options:['Animal Bite','Animal Attack (no bite)','Property Damage by Animal','Animal-related Vehicle Accident','Other'] },
+        { id:'injuries',     label:'Injuries / Damage Sustained', type:'textarea', required:true,  placeholder:'Describe injuries or damage in full' },
+        { id:'medicalTreatment', label:'Medical treatment received?', type:'ynu', required:false },
+        { id:'hospital',     label:'Hospital / Clinic (if treated)', type:'text',  required:false },
+        { id:'circumstances',label:'Full Circumstances',          type:'textarea', required:true },
+        { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false },
+      ]},
+    ],
+  },
+};
+
+
+
+// ─────────────────────────────────────────────────────────────────
+// GENERIC CONSENT SCREEN (non-vehicle statement types)
+// ─────────────────────────────────────────────────────────────────
+function GenericConsentScreen({ navigation, route }) {
+  const { draft, statementType, category } = route.params;
+  const [consentData, setConsentData] = useState(false);
+  const accentCol = category?.colour || C.red;
+
+  return (
+    <SafeAreaView style={ui.safe} edges={['bottom']}>
+      <TopBar
+        title={statementType?.label || 'Statement'}
+        subtitle="AffidavitAssist"
+        onBack={() => navigation.goBack()}
+      />
+      <ScrollView style={{ flex:1 }} contentContainerStyle={ui.body}>
+        <Text style={ui.heading}>{statementType?.label}</Text>
+        <Text style={{ fontSize:15, color:C.grey, lineHeight:22, marginBottom:18 }}>
+          We will guide you step by step through creating a complete and accurate affidavit. Please read and accept the consent below to continue.
+        </Text>
+        <InfoBox icon="📋">{getStatementSplashInfo(statementType?.id)?.needs?.join(' · ')}</InfoBox>
+        <Text style={ui.secLbl}>CONSENT</Text>
+        <CheckRow
+          label="I consent to the processing of my personal data to generate an affidavit statement."
+          sublabel="Required — this must be checked to continue"
+          checked={consentData}
+          onChange={setConsentData}
+        />
+        <Disclaimer />
+      </ScrollView>
+      <BottomBar>
+        <BtnGhost label="← Back" onPress={() => navigation.goBack()} />
+        <Btn
+          label="Continue →"
+          color={accentCol}
+          onPress={() => {
+            if (!consentData) return Alert.alert('Required', 'Please tick the required consent checkbox.');
+            navigation.navigate('GenericForm', { draft });
+          }}
+          disabled={!consentData}
+        />
+      </BottomBar>
+    </SafeAreaView>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// GENERIC FORM SCREEN — works for all non-vehicle statement types
+// Renders sections + fields from GENERIC_FLOWS[typeId]
+// ─────────────────────────────────────────────────────────────────
+function GenericFormScreen({ navigation, route }) {
+  const { draft } = route.params;
+  const typeId    = draft.statementTypeId;
+  const flow      = GENERIC_FLOWS[typeId];
+  const typeInfo  = AFFIDAVIT_TYPE_MAP[typeId] || {};
+
+  const totalSections = flow ? flow.sections.length : 0;
+  const [sectionIdx, setSectionIdx] = useState(0);
+  const [answers, setAnswers]       = useState(draft.genericAnswers || {});
+  const [showPicker, setShowPicker] = useState(null); // { fieldId, options }
+  const [showDate, setShowDate]     = useState(null); // fieldId
+  const [showTime, setShowTime]     = useState(null); // fieldId
+
+  if (!flow) {
+    return (
+      <SafeAreaView style={ui.safe} edges={['bottom']}>
+        <TopBar title="Statement Form" subtitle="AffidavitAssist" onBack={() => navigation.goBack()} />
+        <View style={{ flex:1, alignItems:'center', justifyContent:'center', padding:32 }}>
+          <Text style={{ fontSize:40, marginBottom:16 }}>🚧</Text>
+          <Text style={{ fontSize:18, fontWeight:'800', color:C.red, marginBottom:8, textAlign:'center' }}>Coming Soon</Text>
+          <Text style={{ fontSize:14, color:C.grey, textAlign:'center', lineHeight:21 }}>
+            The guided question flow for this statement type is being prepared. Please check back in the next update.
+          </Text>
+          <View style={{ marginTop:24, width:'100%' }}>
+            <Btn label="← Go Back" onPress={() => navigation.goBack()} />
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const section   = flow.sections[sectionIdx];
+  const setAnswer = (id, val) => setAnswers(a => ({ ...a, [id]: val }));
+
+  const validateSection = () => {
+    for (const f of section.fields) {
+      if (f.required && !answers[f.id]?.toString().trim()) {
+        Alert.alert('Required Field', `Please fill in: ${f.label}`);
+        return false;
+      }
+      if (f.keyboard === 'phone-pad' && f.maxLen === 10 && answers[f.id] && !/^\d{10}$/.test(answers[f.id])) {
+        Alert.alert('Invalid Number', `${f.label} must be exactly 10 digits.`);
+        return false;
+      }
+      if (f.keyboard === 'phone-pad' && f.maxLen === 13 && answers[f.id] && !/^\d{13}$/.test(answers[f.id])) {
+        Alert.alert('Invalid ID Number', `${f.label} must be exactly 13 digits.`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const next = async () => {
+    if (!validateSection()) return;
+    if (sectionIdx < totalSections - 1) {
+      setSectionIdx(s => s + 1);
+    } else {
+      const updated = { ...draft, genericAnswers: answers };
+      const stText  = buildGenericStatement(updated);
+      const final   = { ...updated, statementText: stText, status: 'Complete' };
+      await saveDraft(final);
+      navigation.navigate('GenericPreview', { draft: final });
+    }
+  };
+
+  const prev = () => {
+    if (sectionIdx > 0) setSectionIdx(s => s - 1);
+    else navigation.goBack();
+  };
+
+  const formatDateDisplay = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  return (
+    <SafeAreaView style={ui.safe} edges={['bottom']}>
+      <TopBar
+        title={typeInfo.label || 'Statement'}
+        subtitle={`Section ${sectionIdx + 1} of ${totalSections}`}
+        onBack={prev}
+      />
+      <ProgressBar step={sectionIdx + 1} total={totalSections} label={`${section.title} — ${sectionIdx + 1} / ${totalSections}`} />
+
+      <ScrollView style={{ flex:1 }} contentContainerStyle={ui.body} keyboardShouldPersistTaps="handled">
+        <SectionHead>{section.title}</SectionHead>
+
+        {section.fields.map(f => {
+          const val = answers[f.id] || '';
+          const isPhone = f.keyboard === 'phone-pad' && f.maxLen === 10;
+          const isID    = f.keyboard === 'phone-pad' && f.maxLen === 13;
+          const phoneErr = isPhone && val && val.length !== 10 ? 'Must be exactly 10 digits' : null;
+          const idErr    = isID    && val && val.length !== 13 ? 'Must be exactly 13 digits' : null;
+
+          if (f.type === 'ynu') return (
+            <View key={f.id} style={[ui.subCard, { marginBottom: 14 }]}>
+              <Text style={ui.subTxt}>{f.label}{f.required ? <Text style={{ color:C.yellow }}> *</Text> : null}</Text>
+              <YNU value={val} onChange={v => setAnswer(f.id, v)} />
+            </View>
+          );
+
+          if (f.type === 'date') return (
+            <Field key={f.id} label={f.label} required={f.required}>
+              <PickBtn
+                value={val ? formatDateDisplay(val) : ''}
+                placeholder="Select date"
+                onPress={() => setShowDate(f.id)}
+              />
+            </Field>
+          );
+
+          if (f.type === 'time') return (
+            <Field key={f.id} label={f.label} required={f.required}>
+              <PickBtn
+                value={val}
+                placeholder="Select time"
+                onPress={() => setShowTime(f.id)}
+              />
+            </Field>
+          );
+
+          if (f.type === 'picker') {
+            const opts = f.options === 'PROVINCES' ? PROVINCES : f.options;
+            return (
+              <Field key={f.id} label={f.label} required={f.required}>
+                <PickBtn
+                  value={val}
+                  placeholder="Select..."
+                  onPress={() => setShowPicker({ fieldId: f.id, options: opts })}
+                />
+              </Field>
+            );
+          }
+
+          // text / textarea
+          return (
+            <Field key={f.id} label={f.label} required={f.required}>
+              <Inp
+                placeholder={f.placeholder || ''}
+                value={val}
+                onChangeText={v => {
+                  let clean = v;
+                  if (f.keyboard === 'phone-pad') clean = digitsOnly(v).slice(0, f.maxLen || 99);
+                  setAnswer(f.id, clean);
+                }}
+                keyboardType={f.keyboard || 'default'}
+                multiline={f.type === 'textarea'}
+                numberOfLines={f.type === 'textarea' ? 4 : 1}
+                error={phoneErr || idErr}
+              />
+            </Field>
+          );
+        })}
+      </ScrollView>
+
+      <BottomBar>
+        <BtnGhost label={sectionIdx === 0 ? '← Back' : '← Previous'} onPress={prev} />
+        <Btn
+          label={sectionIdx < totalSections - 1 ? 'Next →' : '📄 Generate Statement'}
+          color={sectionIdx < totalSections - 1 ? C.red : C.yellow}
+          onPress={next}
+        />
+      </BottomBar>
+
+      {/* Pickers */}
+      {showPicker && (
+        <ListPicker
+          visible={true}
+          title={showPicker.fieldId}
+          options={showPicker.options}
+          onSelect={v => { setAnswer(showPicker.fieldId, v); setShowPicker(null); }}
+          onClose={() => setShowPicker(null)}
+        />
+      )}
+      <DatePickerModal
+        visible={!!showDate}
+        value={showDate ? (answers[showDate] || '') : ''}
+        onChange={v => { if (showDate) setAnswer(showDate, v); }}
+        onClose={() => setShowDate(null)}
+      />
+      <TimePickerModal
+        visible={!!showTime}
+        value={showTime ? (answers[showTime] || '') : ''}
+        onChange={v => { if (showTime) setAnswer(showTime, v); }}
+        onClose={() => setShowTime(null)}
+      />
+    </SafeAreaView>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// GENERIC PREVIEW SCREEN
+// ─────────────────────────────────────────────────────────────────
+function GenericPreviewScreen({ navigation, route }) {
+  const { draft } = route.params;
+  const [busy, setBusy] = useState(false);
+  const typeInfo = AFFIDAVIT_TYPE_MAP[draft.statementTypeId] || {};
+
+  const buildHtml = () => {
+    const disclaimerText = 'This statement was generated using the AffidavitAssist tool, a free service provided by MyLawSA. The accuracy, completeness, and truthfulness of the contents of this statement are the sole responsibility of the person who provided the information. MyLawSA, its directors, employees, and agents accept no liability whatsoever for any inaccurate, false, or misleading information contained herein. This document does not constitute legal advice.';
+    return `<html><body style="font-family:monospace;padding:32px;font-size:13px;line-height:1.6;">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;">
+        <img src="${LOGO_B64}" style="width:60px;height:60px;object-fit:contain;" />
+        <div>
+          <h2 style="font-family:sans-serif;color:#C62828;margin:0 0 2px;">AffidavitAssist</h2>
+          <p style="font-family:sans-serif;color:#888;margin:0;font-size:11px;letter-spacing:1px;">${typeInfo.categoryLabel || ''} · ${typeInfo.label || ''}</p>
+          <p style="font-family:sans-serif;color:#aaa;margin:0;font-size:10px;letter-spacing:1px;">A FREE SERVICE BY MYLAWSA</p>
+        </div>
+      </div>
+      <hr style="border:none;border-top:2px solid #C62828;margin-bottom:24px;"/>
+      <pre style="white-space:pre-wrap;font-family:monospace;font-size:13px;line-height:1.7;">${draft.statementText}</pre>
+      <hr style="border:none;border-top:1px solid #ddd;margin-top:48px;margin-bottom:12px;"/>
+      <p style="font-family:sans-serif;font-size:9px;color:#aaa;line-height:1.6;font-style:italic;text-align:center;">${disclaimerText}</p>
+    </body></html>`;
+  };
+
+  const handleShare = async () => {
+    try {
+      setBusy(true);
+      const { uri } = await Print.printToFileAsync({ html: buildHtml() });
+      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Share your statement' });
+    } catch (e) { Alert.alert('Error', e.message); }
+    finally { setBusy(false); }
+  };
+
+  const handlePrint = async () => {
+    try { await Print.printAsync({ html: buildHtml() }); }
+    catch (e) { Alert.alert('Error', e.message); }
+  };
+
+  return (
+    <SafeAreaView style={ui.safe} edges={['bottom']}>
+      <TopBar title="Statement Preview" subtitle="AffidavitAssist" onBack={() => navigation.goBack()} />
+      <ScrollView style={{ flex:1 }} contentContainerStyle={ui.body}>
+        <Disclaimer />
+        {/* Statement text */}
+        <View style={{ backgroundColor:'white', borderRadius:14, borderWidth:1.5, borderColor:C.border, overflow:'hidden', marginBottom:16 }}>
+          <View style={{ backgroundColor: typeInfo.categoryColour || C.red, paddingVertical:14, paddingHorizontal:20 }}>
+            <Text style={{ color:'white', fontSize:13, fontWeight:'700', letterSpacing:1.5, textAlign:'center' }}>
+              {(typeInfo.label || 'AFFIDAVIT').toUpperCase()}
+            </Text>
+          </View>
+          <Text style={{ padding:20, fontSize:13, color:C.text, lineHeight:20, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+            {draft.statementText}
+          </Text>
+        </View>
+        {/* Export buttons */}
+        <View style={{ gap:10 }}>
+          <TouchableOpacity
+            style={{ backgroundColor: typeInfo.categoryColour || C.red, borderRadius:14, paddingVertical:16, alignItems:'center', flexDirection:'row', justifyContent:'center', gap:10 }}
+            onPress={handleShare} activeOpacity={0.85} disabled={busy}>
+            <Text style={{ color:'white', fontSize:15, fontWeight:'700' }}>{busy ? '⏳ Generating PDF...' : '📤 Share PDF'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ backgroundColor:'white', borderRadius:14, paddingVertical:16, alignItems:'center', borderWidth:1.5, borderColor:C.border, flexDirection:'row', justifyContent:'center', gap:10 }}
+            onPress={handlePrint} activeOpacity={0.85}>
+            <Text style={{ color:C.text, fontSize:15, fontWeight:'700' }}>🖨️ Print Statement</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+      <BottomBar>
+        <BtnGhost label="← Edit" onPress={() => navigation.goBack()} />
+        <Btn label="Done ✓" onPress={() => navigation.navigate('Home')} />
+      </BottomBar>
+    </SafeAreaView>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// GENERIC STATEMENT BUILDER
+// Converts GENERIC_FLOWS answers into a formatted statement string
+// ─────────────────────────────────────────────────────────────────
+function buildGenericStatement(draft) {
+  const typeId   = draft.statementTypeId;
+  const typeInfo = AFFIDAVIT_TYPE_MAP[typeId] || {};
+  const flow     = GENERIC_FLOWS[typeId];
+  const answers  = draft.genericAnswers || {};
+  const line     = '─'.repeat(40);
+  const gph      = (id, fb) => (answers[id] && String(answers[id]).trim()) ? String(answers[id]).trim() : `[${fb || id.toUpperCase()}]`;
+  const yn       = (id) => answers[id] === 'y' ? 'Yes' : answers[id] === 'n' ? 'No' : answers[id] === 'u' ? 'Unknown' : '[Not specified]';
+  const fmtDate  = (id) => {
+    if (!answers[id]) return '[DATE]';
+    const d = new Date(answers[id]);
+    return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  let s = `AFFIDAVIT\n`;
+  s += `${typeInfo.categoryLabel ? typeInfo.categoryLabel.toUpperCase() + ' — ' : ''}${(typeInfo.label || typeId).toUpperCase()}\n`;
+  s += `${line}\n\n`;
+  s += `I, ${gph('fullName','FULL NAME')}, Identity / Passport Number: ${gph('idNumber','ID NUMBER')}, `;
+  s += `do hereby make oath and state the following:\n\n`;
+
+  if (!flow) return s + '[Statement content unavailable — please complete manually]\n';
+
+  flow.sections.forEach((sec, si) => {
+    s += `${line}\n${si + 1}. ${sec.title.toUpperCase()}\n${line}\n`;
+    sec.fields.forEach(f => {
+      if (f.id === 'fullName' || f.id === 'idNumber') return; // already in header
+      let val = '';
+      if (f.type === 'date')   val = fmtDate(f.id);
+      else if (f.type === 'ynu') val = yn(f.id);
+      else val = answers[f.id] ? String(answers[f.id]).trim() : '[Not provided]';
+      if (val && val !== '[Not provided]') s += `${f.label}: ${val}\n`;
+    });
+    s += `\n`;
+  });
+
+  s += `${line}\nDECLARATION\n${line}\n`;
+  s += `I declare that the contents of this affidavit are true and correct to the best of my knowledge and belief.\n`;
+  s += `I know and understand the contents of this declaration.\n`;
+  s += `I have no objection to taking the prescribed oath.\n`;
+  s += `I consider the prescribed oath to be binding on my conscience.\n\n`;
+  s += `Signed at ___________________________ on this _____ day of _________________ 20_____\n\n`;
+  s += `Signature: __________________________\n\n`;
+  s += `Full Name: ${gph('fullName','FULL NAME')}\n\n`;
+  s += `Before me:\n\n`;
+  s += `Commissioner of Oaths: __________________________\n\n`;
+  s += `Designation: __________________________\n\n`;
+  s += `Date: __________________________\n`;
+
+  return s;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SCREEN 1 — SPLASH (Vehicle Accident — existing flow)
 // ─────────────────────────────────────────────────────────────────
 function SplashScreen({ navigation }) {
   return (
@@ -664,13 +2406,16 @@ function SplashScreen({ navigation }) {
       <View style={{ position: 'absolute', bottom: '34%', left: 0, right: 0, height: '5%', backgroundColor: C.yellow }} />
 
       <SafeAreaView style={{ flex: 1 }}>
+        <TouchableOpacity onPress={() => navigation.navigate('Home')} style={{ position: 'absolute', top: 52, left: 20, zIndex: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 24 }}>‹</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Categories</Text>
+        </TouchableOpacity>
         <View style={{ flex: 1, paddingHorizontal: 32, paddingTop: 40, paddingBottom: 28, alignItems: 'center' }}>
           <Image source={{ uri: LOGO_B64 }} style={{ width: 84, height: 84, borderRadius: 24, backgroundColor: 'white' }} resizeMode="contain" />
           <Text style={sp.title}>SAPS{'\n'}<Text style={{ color: C.yellow }}>Accident</Text>{'\n'}Statement</Text>
           <Text style={sp.sub}>From incident to accident statement — made easy. Create a clear, accurate SAPS accident statement step by step.</Text>
-          <Text style={sp.tagline}>A FREE SERVICE BY MYLAWSA</Text>
           <View style={{ flex: 1 }} />
-          
+          <Text style={sp.tagline}>A FREE SERVICE BY MYLAWSA</Text>
           <TouchableOpacity style={sp.btnPrimary} onPress={() => navigation.navigate('Welcome')} activeOpacity={0.85}>
             <Text style={{ color: 'white', fontSize: 17, fontWeight: '800' }}>Get Started →</Text>
           </TouchableOpacity>
@@ -702,7 +2447,7 @@ function WelcomeScreen({ navigation }) {
   const [consentMkt,  setConsentMkt]  = useState(false);
   return (
     <SafeAreaView style={ui.safe} edges={['bottom']}>
-      <TopBar title="Welcome" subtitle="SAPS AccidentStatement" onBack={() => navigation.goBack()} />
+      <TopBar title="Welcome" subtitle="AffidavitAssist" onBack={() => navigation.goBack()} />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}>
         <Text style={ui.heading}>Welcome</Text>
         <Text style={{ fontSize: 15, color: C.grey, lineHeight: 22, marginBottom: 18 }}>From incident to accident statement — made easy. Create clear, accurate accident statements with our simple step-by-step guidance.</Text>
@@ -737,11 +2482,11 @@ function ReportsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={ui.safe} edges={['bottom']}>
-      <TopBar title="My Reports" subtitle="SAPS AccidentStatement" onBack={() => navigation.navigate('Splash')} />
+      <TopBar title="My Reports" subtitle="AffidavitAssist" onBack={() => navigation.navigate('Home')} />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}>
-        <TouchableOpacity style={ui.newBtn} onPress={async () => { const d = createDraft(); await saveDraft(d); navigation.navigate('Details', { draft: d }); }} activeOpacity={0.85}>
+        <TouchableOpacity style={ui.newBtn} onPress={() => navigation.navigate('Home')} activeOpacity={0.85}>
           <Text style={{ color: C.yellow, fontSize: 22, fontWeight: '800' }}>+</Text>
-          <Text style={{ color: 'white', fontSize: 16, fontWeight: '700', flex: 1 }}>Create New Accident Report</Text>
+          <Text style={{ color: 'white', fontSize: 16, fontWeight: '700', flex: 1 }}>Create New Statement</Text>
         </TouchableOpacity>
 
         {drafts.length === 0
@@ -761,6 +2506,11 @@ function ReportsScreen({ navigation }) {
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                       <View>
                         <Text style={{ fontSize: 16, fontWeight: '800', color: C.red }}>Report # {d.reportNumber}</Text>
+                        {d.statementTypeId && d.statementTypeId !== 'vehicle_accident' && (
+                          <Text style={{ fontSize: 11, color: C.grey, marginTop: 1 }}>
+                            {AFFIDAVIT_TYPE_MAP[d.statementTypeId]?.label || d.statementTypeId}
+                          </Text>
+                        )}
                         <Text style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>
                           Created: {cr.getDate()} {MONTHS[cr.getMonth()].slice(0,3)} {cr.getFullYear()} · {String(cr.getHours()).padStart(2,'0')}:{String(cr.getMinutes()).padStart(2,'0')}
                         </Text>
@@ -823,7 +2573,7 @@ function DetailsScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={ui.safe} edges={['bottom']}>
-      <TopBar title="Accident Details" subtitle="SAPS AccidentStatement" onBack={() => tab > 0 ? setTab(tab - 1) : navigation.goBack()} />
+      <TopBar title="Accident Details" subtitle="AffidavitAssist" onBack={() => tab > 0 ? setTab(tab - 1) : navigation.goBack()} />
       <ProgressBar step={tab + 1} total={6} label={labels[tab]} />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body} keyboardShouldPersistTaps="handled">
@@ -1012,7 +2762,7 @@ function OtherPartiesScreen({ navigation, route }) {
       <TopBar title="Other Parties" subtitle="Drivers & Witnesses" onBack={() => navigation.goBack()} />
       <ProgressBar step={5} total={6} label="Step 5 of 6 · Other Parties" />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}>
-        <InfoBox icon="💡">The more details you provide, the more complete your statement will be — and the better your chances of recovering accident damage.</InfoBox>
+        <InfoBox icon="💡">The more details you provide about the other parties involved, the more complete and useful your statement will be.</InfoBox>
         <SectionHead>Other Driver(s)</SectionHead>
         {draft.otherParties.map((p, i) => (
           <View key={i} style={ui.partyCard}>
@@ -1259,20 +3009,25 @@ function ExportScreen({ navigation, route }) {
     <SafeAreaView style={ui.safe} edges={['bottom']}>
       <TopBar title="Export Options" subtitle="Share or save your statement" onBack={() => navigation.goBack()} />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}>
-        <Text style={{ fontSize: 15, color: C.grey, lineHeight: 22, marginBottom: 20 }}>Your statement is ready. Generate a PDF and share or print it.</Text>
+        <Text style={{ fontSize: 15, color: C.grey, lineHeight: 22, marginBottom: 20 }}>Your statement is ready. Generate a branded PDF with your company logo and share or print it.</Text>
         <ExCard icon="📤" title="Share PDF" sub="Send via WhatsApp, Email, or any app" accent onPress={handleShare} />
         <ExCard icon="🖨️" title="Print Statement" sub="Open the print dialog on your device" onPress={handlePrint} />
         <Disclaimer />
-        <View style={{ backgroundColor: C.redLight, borderRadius: 14, borderWidth: 1.5, borderColor: '#FFCDD2', padding: 20 }}>
-          <Text style={{ fontSize: 26, marginBottom: 8 }}>💼</Text>
-          <Text style={{ fontSize: 16, fontWeight: '800', color: C.red, marginBottom: 8, lineHeight: 22 }}>Can we help recover your damages?</Text>
-          <Text style={{ fontSize: 13, color: C.grey, lineHeight: 19, marginBottom: 8 }}>MyLawSA specialises in recovering vehicle accident damage (NOMS) from the at-fault driver — at no upfront cost to you.</Text>
-          <Text style={{ fontSize: 14, fontWeight: '800', color: C.red }}>No Success. No Fee.</Text>
-        </View>
+        {draft.statementTypeId === 'vehicle_accident' && (
+          <View style={{ backgroundColor: C.redLight, borderRadius: 14, borderWidth: 1.5, borderColor: '#FFCDD2', padding: 20 }}>
+            <Text style={{ fontSize: 26, marginBottom: 8 }}>💼</Text>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: C.red, marginBottom: 8, lineHeight: 22 }}>Can we help recover your damages?</Text>
+            <Text style={{ fontSize: 13, color: C.grey, lineHeight: 19, marginBottom: 8 }}>MyLawSA specialises in recovering vehicle accident damage (NOMS) from the at-fault driver — at no upfront cost to you.</Text>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: C.red }}>No Win. No Fee.</Text>
+          </View>
+        )}
       </ScrollView>
       <BottomBar>
         <BtnGhost label="← Back" onPress={() => navigation.goBack()} />
-        <Btn label={busy ? '⏳ Generating...' : 'Continue →'} onPress={() => navigation.navigate('Assistance', { draft })} disabled={busy} />
+        {draft.statementTypeId === 'vehicle_accident'
+          ? <Btn label={busy ? '⏳ Generating...' : 'Continue →'} onPress={() => navigation.navigate('Assistance', { draft })} disabled={busy} />
+          : <Btn label={busy ? '⏳ Generating...' : 'Done ✓'} onPress={() => navigation.navigate('Home')} disabled={busy} />
+        }
       </BottomBar>
     </SafeAreaView>
   );
@@ -1326,7 +3081,7 @@ function AssistanceScreen({ navigation, route }) {
             <Text style={{ fontSize: 30, fontWeight: '800', color: C.text, letterSpacing: -0.5, marginBottom: 12 }}>Done!</Text>
             <Text style={{ fontSize: 15, color: C.text, textAlign: 'center', lineHeight: 22, marginBottom: 8 }}>Your report has been completed. Your SAPS accident statement is ready.</Text>
             <Text style={{ fontSize: 13, color: C.grey, textAlign: 'center', lineHeight: 19, marginBottom: 28 }}>If you consented, a MyLawSA consultant will be in touch shortly.</Text>
-            <TouchableOpacity style={{ backgroundColor: C.red, borderRadius: 14, paddingVertical: 16, width: '100%', alignItems: 'center' }} onPress={() => { setDone(false); navigation.navigate('Splash'); }} activeOpacity={0.85}>
+            <TouchableOpacity style={{ backgroundColor: C.red, borderRadius: 14, paddingVertical: 16, width: '100%', alignItems: 'center' }} onPress={() => { setDone(false); navigation.navigate('Home'); }} activeOpacity={0.85}>
               <Text style={{ color: 'white', fontSize: 16, fontWeight: '800' }}>Back to Home</Text>
             </TouchableOpacity>
           </View>
@@ -1414,19 +3169,28 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer>
         <StatusBar barStyle="light-content" backgroundColor={C.red} />
-        <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }} initialRouteName="Splash">
-          <Stack.Screen name="Splash"       component={SplashScreen}       />
-          <Stack.Screen name="Welcome"      component={WelcomeScreen}      />
-          <Stack.Screen name="Reports"      component={ReportsScreen}      />
-          <Stack.Screen name="Details"      component={DetailsScreen}      />
-          <Stack.Screen name="Classifier"   component={ClassifierScreen}   />
-          <Stack.Screen name="Outcome"      component={OutcomeScreen}      />
-          <Stack.Screen name="OtherParties" component={OtherPartiesScreen} />
-          <Stack.Screen name="Generate"     component={GenerateScreen}     />
-          <Stack.Screen name="Preview"      component={PreviewScreen}      />
-          <Stack.Screen name="Edit"         component={EditScreen}         />
-          <Stack.Screen name="Export"       component={ExportScreen}       />
-          <Stack.Screen name="Assistance"   component={AssistanceScreen}   />
+        <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }} initialRouteName="Home">
+          {/* ── NEW: Category & Type selection ── */}
+          <Stack.Screen name="Home"           component={HomeScreen}           />
+          <Stack.Screen name="TypePicker"     component={TypePickerScreen}     />
+          <Stack.Screen name="StatementSplash"component={StatementSplashScreen}/>
+          {/* ── Generic non-vehicle flow ── */}
+          <Stack.Screen name="GenericConsent" component={GenericConsentScreen} />
+          <Stack.Screen name="GenericForm"    component={GenericFormScreen}    />
+          <Stack.Screen name="GenericPreview" component={GenericPreviewScreen} />
+          {/* ── Existing vehicle accident flow ── */}
+          <Stack.Screen name="Splash"         component={SplashScreen}         />
+          <Stack.Screen name="Welcome"        component={WelcomeScreen}        />
+          <Stack.Screen name="Reports"        component={ReportsScreen}        />
+          <Stack.Screen name="Details"        component={DetailsScreen}        />
+          <Stack.Screen name="Classifier"     component={ClassifierScreen}     />
+          <Stack.Screen name="Outcome"        component={OutcomeScreen}        />
+          <Stack.Screen name="OtherParties"   component={OtherPartiesScreen}   />
+          <Stack.Screen name="Generate"       component={GenerateScreen}       />
+          <Stack.Screen name="Preview"        component={PreviewScreen}        />
+          <Stack.Screen name="Edit"           component={EditScreen}           />
+          <Stack.Screen name="Export"         component={ExportScreen}         />
+          <Stack.Screen name="Assistance"     component={AssistanceScreen}     />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
