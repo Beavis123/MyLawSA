@@ -1,7 +1,6 @@
 /**
  * AffidavitAssist — A MyLawSA Product
- * Expo Go compatible — single App.js
- * Colours: Red · Yellow · Green
+
  */
 
 import React, { useState, useCallback, useRef } from 'react';
@@ -47,9 +46,109 @@ const C = {
 // VALIDATION HELPERS
 // ─────────────────────────────────────────────────────────────────
 const isValidCell = v => /^\d{10}$/.test((v || '').replace(/\s/g, ''));
-const isValidID   = v => /^\d{13}$/.test((v || '').replace(/\s/g, ''));
+const isValidID = v => {
+  const s = (v || '').replace(/\s/g, '');
+  if (!/^\d{13}$/.test(s)) return false;
+  // SA ID Luhn check: starting from right-most digit before check digit,
+  // every second digit is doubled. Standard Luhn on 13-digit SA ID number.
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    let d = parseInt(s[i]);
+    // Digits at even indices (0,2,4...) are taken as-is; odd indices doubled
+    if (i % 2 === 1) { d *= 2; if (d > 9) d -= 9; }
+    sum += d;
+  }
+  const checkDigit = (10 - (sum % 10)) % 10;
+  return checkDigit === parseInt(s[12]);
+};
 const isNotFuture = v => { if (!v) return false; const d = new Date(v); d.setHours(0,0,0,0); const t = new Date(); t.setHours(0,0,0,0); return d <= t; };
 const digitsOnly  = v => v.replace(/[^\d]/g, '');
+
+// ─────────────────────────────────────────────────────────────────
+// EMAILJS INTEGRATION
+// ─────────────────────────────────────────────────────────────────
+const EJS_SERVICE_ID  = 'service_pj9mktr';
+const EJS_TEMPLATE_ID = 'template_vpq5mfu';
+const EJS_PUBLIC_KEY  = 'lanbNCHhv0_kK7jTz';
+const EJS_RECIPIENTS  = ['legal@mylawsa.co.za', 'itdev2@mylawsa.co.za', 'itdev3@mylawsa.co.za'];
+
+/**
+ * sendEmail — fires an EmailJS request for each recipient.
+ * @param {object} params  — template variable map
+ * @returns {Promise<boolean>} — true if all sent ok, false if any failed
+ */
+async function sendEmail(params) {
+  const results = await Promise.allSettled(
+    EJS_RECIPIENTS.map(to =>
+      fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_id:  EJS_SERVICE_ID,
+          template_id: EJS_TEMPLATE_ID,
+          user_id:     EJS_PUBLIC_KEY,
+          template_params: { ...params, to_email: to },
+        }),
+      }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r; })
+    )
+  );
+  const failed = results.filter(r => r.status === 'rejected');
+  if (failed.length > 0) {
+    console.warn('EmailJS: some sends failed', failed.map(f => f.reason?.message));
+  }
+  return failed.length === 0;
+}
+
+/**
+ * buildEmailParams — builds the template variable map from a draft.
+ * @param {object} draft
+ * @param {string} trigger  — 'completed' | 'noms_optin' | 'marketing_optin'
+ */
+function buildEmailParams(draft, trigger) {
+  const typeInfo   = AFFIDAVIT_TYPE_MAP[draft.statementTypeId] || {};
+  const now        = new Date();
+  const dateStr    = `${now.getDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][now.getMonth()]} ${now.getFullYear()}`;
+  const timeStr    = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  // Pull client name + contact from either vehicle or generic answers
+  const clientName = draft.driver?.fullName
+    || draft.genericAnswers?.fullName
+    || '[Unknown]';
+  const clientCell = draft.driver?.cellOrEmail
+    || draft.genericAnswers?.cell
+    || '[Not provided]';
+  const clientId   = draft.driver?.idNumber
+    || draft.genericAnswers?.idNumber
+    || '[Not provided]';
+
+  const triggerLabels = {
+    completed:       'Statement Completed',
+    noms_optin:      'NOMS Recovery Opt-In',
+    marketing_optin: 'Marketing Consent Opt-In',
+  };
+
+  // Truncate statement text to avoid email size limits (keep first 3000 chars)
+  const stText = draft.statementText
+    ? (draft.statementText.length > 3000
+        ? draft.statementText.slice(0, 3000) + '\n\n[... statement truncated — full copy saved in app ...]'
+        : draft.statementText)
+    : '[Statement not yet generated]';
+
+  return {
+    trigger_type:    triggerLabels[trigger] || trigger,
+    report_number:   draft.reportNumber || draft.id || '[Unknown]',
+    statement_type:  typeInfo.label || draft.statementTypeId || 'Vehicle Accident',
+    category:        typeInfo.categoryLabel || 'Vehicle / Road Accident',
+    client_name:     clientName,
+    client_cell:     clientCell,
+    client_id:       clientId,
+    date_submitted:  `${dateStr} at ${timeStr}`,
+    statement_text:  stText,
+    noms_consent:    draft.consentMyLawSA  ? 'YES — opted in' : 'No',
+    marketing_consent: draft.consentMarketing ? 'YES — opted in' : 'No',
+  };
+}
+
 
 
 // ─────────────────────────────────────────────────────────────────
@@ -327,7 +426,7 @@ function createDraft(statementTypeId) {
     statementTypeId: statementTypeId || 'vehicle_accident',
     driver:   { fullName:'', cellOrEmail:'', idNumber:'', address:'', licenceNumber:'', relationship:'' },
     vehicle:  { registration:'', make:'', model:'', year:'', colour:'', trailerInvolved:false, trailerReg:'' },
-    accident: { date:'', time:'', street:'', landmark:'', city:'', province:'', caseNumber:'' },
+    accident: { date:'', time:'', street:'', landmark:'', city:'', province:'', caseNumber:'', estimatedDamage:'' },
     classifierAnswers:{}, accidentKey:null, subAnswers:{},
     otherParties:[], witnesses:[], statementText:'',
     genericAnswers:{},
@@ -418,6 +517,7 @@ function buildStatement(draft) {
     : '[DATE]';
 
   let s = `SAPS ACCIDENT STATEMENT\n${line}\n`;
+  if (accident.estimatedDamage?.trim()) s += `Estimated Vehicle Damage: R ${accident.estimatedDamage.trim()}\n`;
   if (accident.caseNumber?.trim()) s += `SAPS Case Number: ${accident.caseNumber.trim()}\n`;
 
   s += `\nI, ${ph(driver.fullName,'FULL NAME')}, ID / Passport No. ${ph(driver.idNumber,'ID / PASSPORT NUMBER')}, residing at ${driver.address?.trim() || '[RESIDENTIAL ADDRESS]'}, hereby declare the following:\n`;
@@ -442,7 +542,7 @@ function buildStatement(draft) {
   if (wits.length > 0) { s += `\nWitness(es):\n`; wits.forEach((w,i) => { s += `${i+1}. ${ph(w.name,'WITNESS NAME')}${w.contact ? ` — ${w.contact}` : ''}\n`; }); }
 
   s += `\n${line}\n5. DAMAGES\n${line}\n`;
-  s += `My vehicle sustained damage as a result of the collision. I attach photographs as Annexure A.\n`;
+  s += `My vehicle sustained damage as a result of the collision.\n`;
 
   s += `\n${line}\n6. DECLARATION\n${line}\n`;
   s += `I declare that the contents of this statement are true and correct to the best of my knowledge and belief.\n`;
@@ -1188,9 +1288,12 @@ const GENERIC_FLOWS = {
       { title: 'Items Stolen', fields: [
         { id:'items',       label:'Describe Items Stolen',        type:'textarea', required:true,  placeholder:'List each item, include make/model/serial numbers where possible' },
         { id:'totalValue',  label:'Estimated Total Value (R)',    type:'text',     required:false, placeholder:'e.g. R 8 500', keyboard:'numeric' },
+        { id:'estimatedDamage', label:'Estimated Total Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 8 500', keyboard:'numeric' },
         { id:'serialNums',  label:'Serial / IMEI Numbers (if known)', type:'text', required:false, placeholder:'e.g. IMEI: 356938035643809' },
       ]},
       { title: 'Circumstances', fields: [
+        { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
+        { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
         { id:'circumstances', label:'Describe What Happened',     type:'textarea', required:true,  placeholder:'Describe clearly what happened leading up to, during, and after the theft' },
         { id:'suspectDesc',   label:'Suspect Description (if seen)', type:'textarea', required:false, placeholder:'e.g. Male, approximately 25 years, wearing red jacket' },
         { id:'witnessName',   label:'Witness Name (if any)',      type:'text',     required:false, placeholder:'Full name of witness' },
@@ -1222,6 +1325,7 @@ const GENERIC_FLOWS = {
         { id:'theftType',      label:'What was stolen?',          type:'picker',   required:true,  options:['The entire vehicle','Items from inside the vehicle','Vehicle parts (wheels, catalytic converter, etc.)','Attempted theft — nothing taken'] },
         { id:'itemsStolen',    label:'Describe Items / Damage',   type:'textarea', required:true,  placeholder:'Describe what was taken or what damage was caused' },
         { id:'circumstances',  label:'Circumstances',             type:'textarea', required:true,  placeholder:'How did you discover the theft? What did you observe?' },
+        { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
         { id:'caseNumber',     label:'SAPS Case Number (if obtained)', type:'text',required:false, placeholder:'e.g. CAS 123/02/2025' },
       ]},
     ],
@@ -1274,7 +1378,9 @@ const GENERIC_FLOWS = {
       { title: 'Items Stolen', fields: [
         { id:'itemsStolen',   label:'Describe All Items Stolen',    type:'textarea', required:true, placeholder:'List items — include make, model, serial numbers, estimated value' },
         { id:'totalValue',    label:'Estimated Total Value (R)',    type:'text',     required:false, placeholder:'e.g. R 45 000', keyboard:'numeric' },
+        { id:'estimatedDamage', label:'Estimated Total Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 45 000', keyboard:'numeric' },
         { id:'damageDesc',    label:'Property Damage Caused',       type:'textarea', required:false, placeholder:'Describe any damage caused during the break-in' },
+        { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
         { id:'caseNumber',    label:'SAPS Case Number',             type:'text',     required:false, placeholder:'e.g. CAS 123/02/2025' },
       ]},
     ],
@@ -1301,6 +1407,7 @@ const GENERIC_FLOWS = {
         { id:'securityDesc', label:'Security measures in place',  type:'textarea', required:false, placeholder:'e.g. CCTV cameras, alarm system, security guard, electric fence' },
         { id:'itemsStolen',  label:'Items / Cash / Stock Stolen', type:'textarea', required:true, placeholder:'List all stolen items with estimated values' },
         { id:'totalValue',   label:'Estimated Total Value (R)',   type:'text',     required:false, placeholder:'e.g. R 120 000', keyboard:'numeric' },
+        { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
         { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false, placeholder:'e.g. CAS 123/02/2025' },
       ]},
     ],
@@ -1350,9 +1457,11 @@ const GENERIC_FLOWS = {
         { id:'injuries',      label:'Describe Your Injuries',       type:'textarea', required:true, placeholder:'e.g. Bruising to face, laceration on left arm, broken nose' },
         { id:'medicalTreatment', label:'Did you receive medical treatment?', type:'ynu', required:true },
         { id:'hospital',      label:'Hospital / Clinic Name',       type:'text',  required:false, placeholder:'Where were you treated?' },
+        { id:'estimatedDamage', label:'Estimated Medical / Damage Costs (R)', type:'text', required:false, placeholder:'e.g. R 2 500', keyboard:'numeric' },
         { id:'circumstances', label:'Full Circumstances',           type:'textarea', required:true, placeholder:'Describe the full sequence of events before, during, and after the assault' },
         { id:'witnessName',   label:'Witness Name (if any)',        type:'text',  required:false, placeholder:'Witness full name' },
         { id:'witnessCell',   label:'Witness Contact',              type:'text',  required:false, placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+        { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
         { id:'caseNumber',    label:'SAPS Case Number',             type:'text',  required:false, placeholder:'e.g. CAS 123/02/2025' },
       ]},
     ],
@@ -1384,6 +1493,7 @@ const GENERIC_FLOWS = {
         { id:'admissionDate',label:'Date of Admission',           type:'date',     required:false },
         { id:'medNotes',     label:'Medical notes or diagnosis',  type:'textarea', required:false, placeholder:'Any diagnosis or prognosis provided by medical staff' },
         { id:'circumstances',label:'Full Circumstances',          type:'textarea', required:true, placeholder:'Full sequence of events' },
+        { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
         { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false, placeholder:'e.g. CAS 123/02/2025' },
       ]},
     ],
@@ -1508,6 +1618,7 @@ const GENERIC_FLOWS = {
         { id:'propertyAddr', label:'Address of Damaged Property', type:'text',     required:true },
         { id:'damageDesc',   label:'Describe Damage in Detail',   type:'textarea', required:true,  placeholder:'What was damaged, how, and estimated repair cost' },
         { id:'repairValue',  label:'Estimated Repair Value (R)',  type:'text',     required:false, keyboard:'numeric' },
+        { id:'estimatedDamage', label:'Estimated Total Damage Cost (R)', type:'text', required:false, placeholder:'e.g. R 12 000', keyboard:'numeric' },
         { id:'perpetrator',  label:'Perpetrator (if known)',      type:'text',     required:false },
         { id:'circumstances',label:'Circumstances',               type:'textarea', required:true,  placeholder:'How did the damage occur? Was there a dispute or motive?' },
         { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false },
@@ -1528,6 +1639,7 @@ const GENERIC_FLOWS = {
         { id:'propertyAddr', label:'Address of Affected Property',type:'text',     required:true },
         { id:'vandalismDesc',label:'Describe the Vandalism',      type:'textarea', required:true,  placeholder:'e.g. Graffiti sprayed on front wall, windows smashed, gate broken' },
         { id:'repairValue',  label:'Estimated Repair/Cleaning Cost (R)', type:'text', required:false, keyboard:'numeric' },
+        { id:'estimatedDamage', label:'Estimated Total Damage Cost (R)', type:'text', required:false, placeholder:'e.g. R 5 000', keyboard:'numeric' },
         { id:'cctv',         label:'Is CCTV available in the area?', type:'ynu',   required:false },
         { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false },
       ]},
@@ -1675,7 +1787,9 @@ const GENERIC_FLOWS = {
         { id:'causeOfLoss',  label:'Cause of Loss',               type:'picker',   required:true,  options:['Fire','Flood','Storm / Natural Disaster','Accident','Other'] },
         { id:'date',         label:'Date of Incident',            type:'date',     required:true },
         { id:'itemsLost',    label:'Items Lost / Damaged',        type:'textarea', required:true,  placeholder:'List all items with estimated values' },
+        { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
         { id:'totalValue',   label:'Total Estimated Value (R)',   type:'text',     required:false, keyboard:'numeric' },
+        { id:'estimatedDamage', label:'Estimated Total Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 250 000', keyboard:'numeric' },
         { id:'insurer',      label:'Insurance Company (if any)',  type:'text',     required:false },
         { id:'policyNum',    label:'Policy Number',               type:'text',     required:false },
         { id:'circumstances',label:'Full Circumstances',          type:'textarea', required:true },
@@ -1738,7 +1852,9 @@ const GENERIC_FLOWS = {
         { id:'date',         label:'Date of Incident',            type:'date',     required:true },
         { id:'itemsAffected',label:'Items / Property Affected',   type:'textarea', required:true },
         { id:'damageDesc',   label:'Description of Loss / Damage',type:'textarea', required:true },
+        { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
         { id:'totalValue',   label:'Estimated Claim Value (R)',   type:'text',     required:false, keyboard:'numeric' },
+        { id:'estimatedDamage', label:'Estimated Total Damage Cost (R)', type:'text', required:false, placeholder:'e.g. R 75 000', keyboard:'numeric' },
         { id:'circumstances',label:'Full Circumstances',          type:'textarea', required:true },
       ]},
     ],
@@ -1933,7 +2049,9 @@ const GENERIC_FLOWS = {
         { id:'sentDate',     label:'Date Sent',                   type:'date',     required:false },
         { id:'expectedDate', label:'Expected Delivery Date',      type:'date',     required:false },
         { id:'parcelDesc',   label:'Contents of Parcel',          type:'textarea', required:true,  placeholder:'Describe all contents including estimated value of each item' },
+        { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
         { id:'totalValue',   label:'Total Estimated Value (R)',   type:'text',     required:false, keyboard:'numeric' },
+        { id:'estimatedDamage', label:'Estimated Total Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 3 500', keyboard:'numeric' },
         { id:'circumstances',label:'Circumstances of Loss',       type:'textarea', required:true,  placeholder:'When and how did you discover the parcel was lost or damaged?' },
       ]},
     ],
@@ -1981,10 +2099,12 @@ const GENERIC_FLOWS = {
         { id:'incidentLocation', label:'Exact Location in Workplace', type:'text', required:true, placeholder:'e.g. Warehouse floor, reception area, machine room' },
         { id:'incidentDesc', label:'Full Description of Incident',type:'textarea', required:true,  placeholder:'Describe what happened in full chronological detail' },
         { id:'injuries',     label:'Injuries Sustained',         type:'textarea', required:false, placeholder:'Describe any injuries; write "None" if no injuries' },
+        { id:'estimatedDamage', label:'Estimated Cost of Damages / Medical Treatment (R)', type:'text', required:false, placeholder:'e.g. R 8 000', keyboard:'numeric' },
         { id:'medicalTreatment', label:'Medical treatment received?', type:'ynu', required:false },
         { id:'witnessName',  label:'Witness Name',               type:'text',     required:false },
         { id:'witnessCell',  label:'Witness Contact',            type:'text',     required:false, keyboard:'phone-pad', maxLen:10 },
         { id:'reportedToEmployer', label:'Reported to employer?', type:'ynu',     required:false },
+        { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
         { id:'caseNumber',   label:'SAPS Case Number (if applicable)', type:'text', required:false },
       ]},
     ],
@@ -2009,9 +2129,11 @@ const GENERIC_FLOWS = {
         { id:'ownerAddress', label:'Owner Address (if known)',     type:'text',     required:false },
         { id:'incidentType', label:'Nature of Incident',          type:'picker',   required:true,  options:['Animal Bite','Animal Attack (no bite)','Property Damage by Animal','Animal-related Vehicle Accident','Other'] },
         { id:'injuries',     label:'Injuries / Damage Sustained', type:'textarea', required:true,  placeholder:'Describe injuries or damage in full' },
+        { id:'estimatedDamage', label:'Estimated Cost of Damages / Medical Treatment (R)', type:'text', required:false, placeholder:'e.g. R 4 500', keyboard:'numeric' },
         { id:'medicalTreatment', label:'Medical treatment received?', type:'ynu', required:false },
         { id:'hospital',     label:'Hospital / Clinic (if treated)', type:'text',  required:false },
         { id:'circumstances',label:'Full Circumstances',          type:'textarea', required:true },
+        { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
         { id:'caseNumber',   label:'SAPS Case Number',            type:'text',     required:false },
       ]},
     ],
@@ -2131,6 +2253,8 @@ function GenericFormScreen({ navigation, route }) {
       const stText  = buildGenericStatement(updated);
       const final   = { ...updated, statementText: stText, status: 'Complete' };
       await saveDraft(final);
+      // Fire "completed" email — non-blocking
+      sendEmail(buildEmailParams(final, 'completed')).catch(() => {});
       navigation.navigate('GenericPreview', { draft: final });
     }
   };
@@ -2163,7 +2287,7 @@ function GenericFormScreen({ navigation, route }) {
           const isPhone = f.keyboard === 'phone-pad' && f.maxLen === 10;
           const isID    = f.keyboard === 'phone-pad' && f.maxLen === 13;
           const phoneErr = isPhone && val && val.length !== 10 ? 'Must be exactly 10 digits' : null;
-          const idErr    = isID    && val && val.length !== 13 ? 'Must be exactly 13 digits' : null;
+          const idErr    = isID    && val && val.length === 13 && !isValidID(val) ? 'Invalid ID number — check digit incorrect' : isID && val && val.length !== 13 ? 'Must be exactly 13 digits' : null;
 
           if (f.type === 'ynu') return (
             <View key={f.id} style={[ui.subCard, { marginBottom: 14 }]}>
@@ -2333,7 +2457,9 @@ function GenericPreviewScreen({ navigation, route }) {
       </ScrollView>
       <BottomBar>
         <BtnGhost label="← Edit" onPress={() => navigation.goBack()} />
-        <Btn label="Done ✓" onPress={() => navigation.navigate('Home')} />
+        <Btn label="Done ✓" onPress={() => {
+              Alert.alert('Statement Complete', 'Your statement has been saved. A notification has been sent to the MyLawSA team.', [{ text: 'OK', onPress: () => navigation.navigate('Home') }]);
+            }} />
       </BottomBar>
     </SafeAreaView>
   );
@@ -2373,7 +2499,10 @@ function buildGenericStatement(draft) {
       if (f.type === 'date')   val = fmtDate(f.id);
       else if (f.type === 'ynu') val = yn(f.id);
       else val = answers[f.id] ? String(answers[f.id]).trim() : '[Not provided]';
-      if (val && val !== '[Not provided]') s += `${f.label}: ${val}\n`;
+      if (f.id === 'estimatedDamage' && val && val !== '[Not provided]') {
+        const cleaned = val.replace(/^R\s*/i, '');
+        s += `${f.label}: R ${cleaned}\n`;
+      } else if (val && val !== '[Not provided]') s += `${f.label}: ${val}\n`;
     });
     s += `\n`;
   });
@@ -2459,8 +2588,11 @@ function WelcomeScreen({ navigation }) {
       </ScrollView>
       <BottomBar>
         <BtnGhost label="← Back" onPress={() => navigation.goBack()} />
-        <Btn label="Continue →" onPress={() => {
+        <Btn label="Continue →" onPress={async () => {
           if (!consentData) return Alert.alert('Required', 'Please tick the required consent checkbox.');
+          // Save marketing consent into AsyncStorage so it can be read later
+          // We use a temp key that GenerateScreen will pick up
+          try { await AsyncStorage.setItem('pending_mkt_consent', consentMkt ? '1' : '0'); } catch {}
           navigation.navigate('Reports');
         }} disabled={!consentData} />
       </BottomBar>
@@ -2556,7 +2688,9 @@ function DetailsScreen({ navigation, route }) {
       if (!isValidCell(draft.driver.cellOrEmail))
         return Alert.alert('Invalid Cell Number', 'Cell number must be exactly 10 digits and contain only numbers.');
       if (!isValidID(draft.driver.idNumber))
-        return Alert.alert('Invalid ID Number', 'ID number must be exactly 13 digits.');
+        return Alert.alert('Invalid ID Number', draft.driver.idNumber.length !== 13
+          ? 'ID number must be exactly 13 digits.'
+          : 'The ID number entered is not valid. Please check the number and try again. The last digit is a mathematically derived check digit.');
       setTab(1);
     } else if (tab === 1) {
       if (!draft.vehicle.registration) return Alert.alert('Required Fields', 'Please enter your vehicle registration number.');
@@ -2596,7 +2730,7 @@ function DetailsScreen({ navigation, route }) {
               value={draft.driver.idNumber}
               onChangeText={v => ud('idNumber', digitsOnly(v).slice(0, 13))}
               keyboardType="phone-pad"
-              error={draft.driver.idNumber && !isValidID(draft.driver.idNumber) ? 'Must be exactly 13 digits' : null}
+              error={draft.driver.idNumber && !isValidID(draft.driver.idNumber) ? (draft.driver.idNumber.length !== 13 ? 'Must be exactly 13 digits' : 'Invalid ID number — check digit incorrect') : null}
             />
           </Field>
           <Field label="Residential Address"><Inp placeholder="Street, Suburb, City" value={draft.driver.address} onChangeText={v => ud('address', v)} /></Field>
@@ -2631,6 +2765,7 @@ function DetailsScreen({ navigation, route }) {
           <Field label="Nearest Landmark or Intersection"><Inp placeholder="e.g. Near KFC / Corner of Main Road" value={draft.accident.landmark} onChangeText={v => ua('landmark', v)} /></Field>
           <Field label="City / Town" required><Inp placeholder="e.g. Johannesburg" value={draft.accident.city} onChangeText={v => ua('city', v)} /></Field>
           <Field label="Province"><PickBtn value={draft.accident.province} placeholder="Select province..." onPress={() => setProv(true)} /></Field>
+          <Field label="Estimated Vehicle Damage (R)"><Inp placeholder="e.g. R 35 000" value={draft.accident.estimatedDamage} onChangeText={v => ua('estimatedDamage', v)} keyboardType="numeric" /></Field>
           <Field label="SAPS Case Number (if known)"><Inp placeholder="e.g. CAS 123/02/2025" value={draft.accident.caseNumber} onChangeText={v => ua('caseNumber', v)} /></Field>
         </>}
       </ScrollView>
@@ -2720,7 +2855,7 @@ function OutcomeScreen({ navigation, route }) {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}>
         <Banner
           claimable={outcome.claimable} label={outcome.label}
-          description={outcome.claimable ? 'This accident type may be claimable. MyLawSA can assist you with recovery at no upfront cost.' : 'This incident type is generally not insurable or claimable as a third-party claim.'}
+          description={outcome.claimable ? 'This accident type may be claimable against the at-fault driver. MyLawSA can assist you with recovery at no upfront cost.' : 'This incident type is generally not insurable or claimable against a third party.'}
         />
         {outcome.subQs?.length > 0 && <>
           <View style={ui.card}>
@@ -2786,7 +2921,7 @@ function OtherPartiesScreen({ navigation, route }) {
                 value={p.idNumber || ''}
                 onChangeText={v => updP(i, { ...p, idNumber: digitsOnly(v).slice(0, 13) })}
                 keyboardType="phone-pad"
-                error={p.idNumber && p.idNumber.length === 13 && !isValidID(p.idNumber) ? 'Must be exactly 13 digits' : null}
+                error={p.idNumber && !isValidID(p.idNumber) ? (p.idNumber.length !== 13 ? 'Must be exactly 13 digits' : 'Invalid ID number — check digit incorrect') : null}
               />
             </Field>
             <Field label="Vehicle Registration"><Inp placeholder="e.g. GP 456-789" value={p.registration || ''} onChangeText={v => updP(i, { ...p, registration: v })} /></Field>
@@ -2867,7 +3002,7 @@ function GenerateScreen({ navigation, route }) {
           <View style={ui.card}>
             <Text style={ui.cardTitle}>Classified As</Text>
             <Text style={{ fontSize: 16, fontWeight: '800', color: C.red, marginTop: 4, marginBottom: 4 }}>{outcome.icon} {outcome.label}</Text>
-            <Text style={{ fontSize: 12, color: C.grey }}>{outcome.claimable ? '✅ May be claimable' : '⚠️ Generally not claimable'}</Text>
+            <Text style={{ fontSize: 12, color: C.grey }}>{outcome.claimable ? '✅ May be claimable against at-fault driver' : '⚠️ Generally not claimable against a third party'}</Text>
           </View>
         )}
         <Disclaimer />
@@ -2881,9 +3016,13 @@ function GenerateScreen({ navigation, route }) {
           setBusy(true);
           setTimeout(async () => {
             const statementText = buildStatement(draft);
-            const updated = { ...draft, statementText, status: 'Complete' };
+            let mktConsent = false;
+            try { mktConsent = (await AsyncStorage.getItem('pending_mkt_consent')) === '1'; } catch {}
+            const updated = { ...draft, statementText, status: 'Complete', consentMarketing: mktConsent };
             await saveDraft(updated);
             setBusy(false);
+            // Fire "completed" email — non-blocking
+            sendEmail(buildEmailParams(updated, 'completed')).catch(() => {});
             navigation.navigate('Preview', { draft: updated });
           }, 800);
         }} disabled={busy} />
@@ -3068,7 +3207,14 @@ function AssistanceScreen({ navigation, route }) {
       </ScrollView>
       <BottomBar>
         <BtnGhost label="← Back" onPress={() => navigation.goBack()} />
-        <Btn label="Finish ✓" onPress={async () => { await saveDraft({ ...draft, consentMyLawSA: consent, status: 'Complete' }); setDone(true); }} />
+        <Btn label="Finish ✓" onPress={async () => {
+                const finalDraft = { ...draft, consentMyLawSA: consent, status: 'Complete' };
+                await saveDraft(finalDraft);
+                // Fire emails based on consents — non-blocking
+                if (consent) sendEmail(buildEmailParams(finalDraft, 'noms_optin')).catch(() => {});
+                if (finalDraft.consentMarketing) sendEmail(buildEmailParams(finalDraft, 'marketing_optin')).catch(() => {});
+                setDone(true);
+              }} />
       </BottomBar>
 
       {/* Screen 15 — Success */}
