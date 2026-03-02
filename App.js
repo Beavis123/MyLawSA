@@ -1,12 +1,15 @@
 /**
  * AffidavitAssist — A MyLawSA Product
-
+ * Expo Go compatible — single App.js
+ * Colours: Red · Yellow · Green
+ *App at this point in development can do all statement types, send emails out of app to admin and store records into a firebase database, UI is functional. IOS development has to be reviewed and Android must still be published
  */
 
 import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
   Modal, FlatList, Alert, Platform, StatusBar, Dimensions, Image,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -15,6 +18,93 @@ import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+
+// ─────────────────────────────────────────────────────────────────
+// FIREBASE — initialisation
+// ─────────────────────────────────────────────────────────────────
+import { initializeApp, getApps } from 'firebase/app';
+import { getFirestore, collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyAb7YIjEuJ73Q84WCfsW7dp8SMnC3D0azo",
+  authDomain:        "affadavitassist.firebaseapp.com",
+  projectId:         "affadavitassist",
+  storageBucket:     "affadavitassist.firebasestorage.app",
+  messagingSenderId: "931173592740",
+  appId:             "1:931173592740:web:2cd946511ee2a270130031",
+};
+
+// Prevent re-initialisation on hot reload
+const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const db   = getFirestore(firebaseApp);
+const auth = getAuth(firebaseApp);
+
+// ─────────────────────────────────────────────────────────────────
+// FIREBASE AUTH — sign in anonymously, store uid globally
+// Called once on app launch from the root App component
+// ─────────────────────────────────────────────────────────────────
+let _firebaseUid = null;
+
+async function ensureFirebaseAuth() {
+  return new Promise((resolve) => {
+    // If already signed in, return immediately
+    const current = auth.currentUser;
+    if (current) { _firebaseUid = current.uid; resolve(current.uid); return; }
+    // Otherwise sign in anonymously
+    signInAnonymously(auth)
+      .then(cred => { _firebaseUid = cred.user.uid; resolve(cred.user.uid); })
+      .catch(err => { console.warn('Firebase anon auth failed:', err.message); resolve(null); });
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// FIREBASE FIRESTORE — save a completed report
+// Silently non-blocking; never interrupts the user flow
+// ─────────────────────────────────────────────────────────────────
+async function saveReportToFirestore(draft) {
+  try {
+    const uid = _firebaseUid || auth.currentUser?.uid;
+    if (!uid) return; // auth not ready — skip silently
+
+    // Build a clean, structured record — strip out the base64 logo etc.
+    const record = {
+      // Identifiers
+      reportNumber:     draft.reportNumber || draft.id,
+      statementTypeId:  draft.statementTypeId,
+      status:           draft.status || 'Complete',
+      createdAt:        draft.createdAt || new Date().toISOString(),
+      completedAt:      serverTimestamp(),
+      userId:           uid,
+
+      // Consent flags
+      consentMyLawSA:   draft.consentMyLawSA   || false,
+      consentMarketing: draft.consentMarketing  || false,
+
+      // Vehicle accident fields (populated for vehicle_accident type)
+      driver:           draft.driver   || null,
+      vehicle:          draft.vehicle  || null,
+      accident:         draft.accident || null,
+      accidentKey:      draft.accidentKey || null,
+      subAnswers:       draft.subAnswers  || {},
+      otherParties:     draft.otherParties || [],
+      witnesses:        draft.witnesses    || [],
+
+      // Generic affidavit fields (all other types)
+      genericAnswers:   draft.genericAnswers || {},
+
+      // The final statement text
+      statementText:    draft.statementText || '',
+    };
+
+    // Use reportNumber as the document ID so it's idempotent (safe to call multiple times)
+    const docRef = doc(collection(db, 'reports'), record.reportNumber);
+    await setDoc(docRef, record, { merge: true });
+  } catch (err) {
+    // Never surface Firebase errors to the user
+    console.warn('Firestore save failed (non-critical):', err.message);
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────
 // COMPANY LOGO (base64 embedded)
@@ -78,25 +168,34 @@ const EJS_RECIPIENTS  = ['legal@mylawsa.co.za', 'itdev2@mylawsa.co.za', 'itdev3@
  * @returns {Promise<boolean>} — true if all sent ok, false if any failed
  */
 async function sendEmail(params) {
-  const results = await Promise.allSettled(
-    EJS_RECIPIENTS.map(to =>
-      fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service_id:  EJS_SERVICE_ID,
-          template_id: EJS_TEMPLATE_ID,
-          user_id:     EJS_PUBLIC_KEY,
-          template_params: { ...params, to_email: to },
-        }),
-      }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r; })
-    )
-  );
-  const failed = results.filter(r => r.status === 'rejected');
-  if (failed.length > 0) {
-    console.warn('EmailJS: some sends failed', failed.map(f => f.reason?.message));
+  try {
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'origin': 'http://localhost',
+      },
+      body: JSON.stringify({
+        service_id:  EJS_SERVICE_ID,
+        template_id: EJS_TEMPLATE_ID,
+        user_id:     EJS_PUBLIC_KEY,
+        accessToken: EJS_PUBLIC_KEY,
+        template_params: {
+          ...params,
+          to_email: EJS_RECIPIENTS.join(', '),
+        },
+      }),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      console.warn('EmailJS send failed:', response.status, errText);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn('EmailJS network error:', e.message);
+    return false;
   }
-  return failed.length === 0;
 }
 
 /**
@@ -669,7 +768,14 @@ function BtnGhost({ label, onPress }) {
 }
 
 function BottomBar({ children }) {
-  return <View style={ui.bottomBar}>{children}</View>;
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
+      <View style={ui.bottomBar}>{children}</View>
+    </KeyboardAvoidingView>
+  );
 }
 
 function InfoBox({ icon, children }) {
@@ -885,7 +991,8 @@ function HomeScreen({ navigation }) {
       <View style={{ position: 'absolute', bottom: '34%', left: 0, right: 0, height: '5%', backgroundColor: C.yellow }} />
 
       <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 36, paddingBottom: 32 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 36, paddingBottom: 32 }}
+          keyboardShouldPersistTaps="handled">
           {/* Header */}
           <View style={{ alignItems: 'center', marginBottom: 28 }}>
             <Image source={{ uri: LOGO_B64 }} style={{ width: 72, height: 72, borderRadius: 20, backgroundColor: 'white', marginBottom: 16 }} resizeMode="contain" />
@@ -989,7 +1096,8 @@ function TypePickerScreen({ navigation, route }) {
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '20%', backgroundColor: 'rgba(0,0,0,0.15)' }} />
 
       <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 32 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 32 }}
+          keyboardShouldPersistTaps="handled">
           {/* Header */}
           <TouchableOpacity onPress={() => navigation.goBack()} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}>
             <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 24, lineHeight: 28 }}>‹</Text>
@@ -1103,7 +1211,11 @@ function StatementSplashScreen({ navigation, route }) {
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '30%', backgroundColor: 'rgba(0,0,0,0.2)' }} />
 
       <SafeAreaView style={{ flex: 1 }}>
-        <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: 32, paddingBottom: 28, alignItems: 'center' }}>
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 28, paddingTop: 32, paddingBottom: 80, alignItems: 'center' }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           {/* Logo */}
           <Image source={{ uri: LOGO_B64 }} style={{ width: 72, height: 72, borderRadius: 20, backgroundColor: 'white', marginBottom: 20 }} resizeMode="contain" />
 
@@ -1130,7 +1242,7 @@ function StatementSplashScreen({ navigation, route }) {
             ))}
           </View>
 
-          <View style={{ flex: 1 }} />
+          <View style={{ height: 24 }} />
 
           <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>
             A FREE SERVICE BY MYLAWSA
@@ -1159,7 +1271,7 @@ function StatementSplashScreen({ navigation, route }) {
           <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 15 }}>
             This statement has been generated based solely on information provided by the individual. The accuracy, completeness, and truthfulness of the contents remain the full responsibility of the person who supplied the information.
           </Text>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
@@ -2157,7 +2269,8 @@ function GenericConsentScreen({ navigation, route }) {
         subtitle="AffidavitAssist"
         onBack={() => navigation.goBack()}
       />
-      <ScrollView style={{ flex:1 }} contentContainerStyle={ui.body}>
+      <ScrollView style={{ flex:1 }} contentContainerStyle={ui.body}
+          keyboardShouldPersistTaps="handled">
         <Text style={ui.heading}>{statementType?.label}</Text>
         <Text style={{ fontSize:15, color:C.grey, lineHeight:22, marginBottom:18 }}>
           We will guide you step by step through creating a complete and accurate affidavit. Please read and accept the consent below to continue.
@@ -2253,8 +2366,9 @@ function GenericFormScreen({ navigation, route }) {
       const stText  = buildGenericStatement(updated);
       const final   = { ...updated, statementText: stText, status: 'Complete' };
       await saveDraft(final);
-      // Fire "completed" email — non-blocking
+      // Fire completed email + Firestore save — both non-blocking
       sendEmail(buildEmailParams(final, 'completed')).catch(() => {});
+      saveReportToFirestore(final).catch(() => {});
       navigation.navigate('GenericPreview', { draft: final });
     }
   };
@@ -2428,7 +2542,8 @@ function GenericPreviewScreen({ navigation, route }) {
   return (
     <SafeAreaView style={ui.safe} edges={['bottom']}>
       <TopBar title="Statement Preview" subtitle="AffidavitAssist" onBack={() => navigation.goBack()} />
-      <ScrollView style={{ flex:1 }} contentContainerStyle={ui.body}>
+      <ScrollView style={{ flex:1 }} contentContainerStyle={ui.body}
+          keyboardShouldPersistTaps="handled">
         <Disclaimer />
         {/* Statement text */}
         <View style={{ backgroundColor:'white', borderRadius:14, borderWidth:1.5, borderColor:C.border, overflow:'hidden', marginBottom:16 }}>
@@ -2539,11 +2654,15 @@ function SplashScreen({ navigation }) {
           <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 24 }}>‹</Text>
           <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Categories</Text>
         </TouchableOpacity>
-        <View style={{ flex: 1, paddingHorizontal: 32, paddingTop: 40, paddingBottom: 28, alignItems: 'center' }}>
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 32, paddingTop: 80, paddingBottom: 80, alignItems: 'center' }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <Image source={{ uri: LOGO_B64 }} style={{ width: 84, height: 84, borderRadius: 24, backgroundColor: 'white' }} resizeMode="contain" />
           <Text style={sp.title}>SAPS{'\n'}<Text style={{ color: C.yellow }}>Accident</Text>{'\n'}Statement</Text>
           <Text style={sp.sub}>From incident to accident statement — made easy. Create a clear, accurate SAPS accident statement step by step.</Text>
-          <View style={{ flex: 1 }} />
+          <View style={{ height: 32 }} />
           <Text style={sp.tagline}>A FREE SERVICE BY MYLAWSA</Text>
           <TouchableOpacity style={sp.btnPrimary} onPress={() => navigation.navigate('Welcome')} activeOpacity={0.85}>
             <Text style={{ color: 'white', fontSize: 17, fontWeight: '800' }}>Get Started →</Text>
@@ -2554,7 +2673,7 @@ function SplashScreen({ navigation }) {
           <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', textAlign: 'center', lineHeight: 15 }}>
             This statement has been generated based solely on information provided by the individual. The accuracy, completeness, and truthfulness of the contents remain the full responsibility of the person who supplied the information.
           </Text>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
@@ -2577,7 +2696,8 @@ function WelcomeScreen({ navigation }) {
   return (
     <SafeAreaView style={ui.safe} edges={['bottom']}>
       <TopBar title="Welcome" subtitle="AffidavitAssist" onBack={() => navigation.goBack()} />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}
+          keyboardShouldPersistTaps="handled">
         <Text style={ui.heading}>Welcome</Text>
         <Text style={{ fontSize: 15, color: C.grey, lineHeight: 22, marginBottom: 18 }}>From incident to accident statement — made easy. Create clear, accurate accident statements with our simple step-by-step guidance.</Text>
         <InfoBox icon="📋">Your ID or passport, vehicle registration details, and as much information as possible about the accident and other parties involved.</InfoBox>
@@ -2593,7 +2713,7 @@ function WelcomeScreen({ navigation }) {
           // Save marketing consent into AsyncStorage so it can be read later
           // We use a temp key that GenerateScreen will pick up
           try { await AsyncStorage.setItem('pending_mkt_consent', consentMkt ? '1' : '0'); } catch {}
-          navigation.navigate('Reports');
+          navigation.navigate('Reports', { fromVehicle: true });
         }} disabled={!consentData} />
       </BottomBar>
     </SafeAreaView>
@@ -2603,8 +2723,9 @@ function WelcomeScreen({ navigation }) {
 // ─────────────────────────────────────────────────────────────────
 // SCREEN 3 — REPORTS OVERVIEW
 // ─────────────────────────────────────────────────────────────────
-function ReportsScreen({ navigation }) {
+function ReportsScreen({ navigation, route }) {
   const [drafts, setDrafts] = useState([]);
+  const fromVehicle = route?.params?.fromVehicle === true;
   useFocusEffect(useCallback(() => { loadDrafts().then(setDrafts); }, []));
 
   const STATUS = {
@@ -2615,17 +2736,28 @@ function ReportsScreen({ navigation }) {
   return (
     <SafeAreaView style={ui.safe} edges={['bottom']}>
       <TopBar title="My Reports" subtitle="AffidavitAssist" onBack={() => navigation.navigate('Home')} />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}>
-        <TouchableOpacity style={ui.newBtn} onPress={() => navigation.navigate('Home')} activeOpacity={0.85}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}
+          keyboardShouldPersistTaps="handled">
+        <TouchableOpacity style={ui.newBtn} onPress={async () => {
+          if (fromVehicle) {
+            const d = createDraft('vehicle_accident');
+            await saveDraft(d);
+            navigation.navigate('Details', { draft: d });
+          } else {
+            navigation.navigate('Home');
+          }
+        }} activeOpacity={0.85}>
           <Text style={{ color: C.yellow, fontSize: 22, fontWeight: '800' }}>+</Text>
-          <Text style={{ color: 'white', fontSize: 16, fontWeight: '700', flex: 1 }}>Create New Statement</Text>
+          <Text style={{ color: 'white', fontSize: 16, fontWeight: '700', flex: 1 }}>
+            {fromVehicle ? 'Create New Accident Report' : 'Create New Statement'}
+          </Text>
         </TouchableOpacity>
 
         {drafts.length === 0
           ? <View style={{ alignItems: 'center', paddingTop: 40 }}>
               <Text style={{ fontSize: 52, marginBottom: 14 }}>📋</Text>
               <Text style={{ fontSize: 18, fontWeight: '800', color: C.red, marginBottom: 6 }}>No reports yet</Text>
-              <Text style={{ fontSize: 14, color: C.grey, textAlign: 'center', lineHeight: 20 }}>Tap the button above to create your first accident statement.</Text>
+              <Text style={{ fontSize: 14, color: C.grey, textAlign: 'center', lineHeight: 20 }}>{fromVehicle ? 'Tap the button above to create your first accident statement.' : 'Tap the button above to create a new statement.'}</Text>
             </View>
           : <>
               <Text style={ui.secLbl}>EXISTING DRAFTS</Text>
@@ -2812,7 +2944,11 @@ function ClassifierScreen({ navigation, route }) {
     <SafeAreaView style={ui.safe} edges={['bottom']}>
       <TopBar title="Classify Accident" subtitle={`Question ${curId} of ${QUESTIONS.length}`} onBack={back} />
       <ProgressBar step={curId} total={QUESTIONS.length} label={`Q${curId} / ${QUESTIONS.length}`} />
-      <View style={{ flex: 1, padding: 24 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 24 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={cl.card}>
           <View style={cl.badge}><Text style={{ color: 'white', fontSize: 12, fontWeight: '700' }}>Q{curId}</Text></View>
           <Text style={cl.qTxt}>{q.text}</Text>
@@ -2827,7 +2963,7 @@ function ClassifierScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
         <InfoBox>Answer each question honestly. The more accurate your answers, the better your statement will be.</InfoBox>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -2852,7 +2988,8 @@ function OutcomeScreen({ navigation, route }) {
     <SafeAreaView style={ui.safe} edges={['bottom']}>
       <TopBar title="Accident Classified" subtitle="Answer follow-up questions" onBack={() => navigation.goBack()} />
       <ProgressBar step={4} total={6} label="Step 4 of 6 · Accident Type" />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}
+          keyboardShouldPersistTaps="handled">
         <Banner
           claimable={outcome.claimable} label={outcome.label}
           description={outcome.claimable ? 'This accident type may be claimable against the at-fault driver. MyLawSA can assist you with recovery at no upfront cost.' : 'This incident type is generally not insurable or claimable against a third party.'}
@@ -2896,7 +3033,8 @@ function OtherPartiesScreen({ navigation, route }) {
     <SafeAreaView style={ui.safe} edges={['bottom']}>
       <TopBar title="Other Parties" subtitle="Drivers & Witnesses" onBack={() => navigation.goBack()} />
       <ProgressBar step={5} total={6} label="Step 5 of 6 · Other Parties" />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}
+          keyboardShouldPersistTaps="handled">
         <InfoBox icon="💡">The more details you provide about the other parties involved, the more complete and useful your statement will be.</InfoBox>
         <SectionHead>Other Driver(s)</SectionHead>
         {draft.otherParties.map((p, i) => (
@@ -2988,7 +3126,8 @@ function GenerateScreen({ navigation, route }) {
     <SafeAreaView style={ui.safe} edges={['bottom']}>
       <TopBar title="Generate Statement" subtitle="Review & Generate" onBack={() => navigation.goBack()} />
       <ProgressBar step={6} total={6} label="Step 6 of 6 · Generate" />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}
+          keyboardShouldPersistTaps="handled">
         <View style={{ backgroundColor: C.greenLight, borderRadius: 14, borderWidth: 1.5, borderColor: '#81C784', padding: 16, marginBottom: 16 }}>
           <Text style={{ fontSize: 14, fontWeight: '800', color: C.green, marginBottom: 12 }}>✅ Information Captured</Text>
           {items.map((it, i) => (
@@ -3021,8 +3160,9 @@ function GenerateScreen({ navigation, route }) {
             const updated = { ...draft, statementText, status: 'Complete', consentMarketing: mktConsent };
             await saveDraft(updated);
             setBusy(false);
-            // Fire "completed" email — non-blocking
+            // Fire completed email + Firestore save — both non-blocking
             sendEmail(buildEmailParams(updated, 'completed')).catch(() => {});
+            saveReportToFirestore(updated).catch(() => {});
             navigation.navigate('Preview', { draft: updated });
           }, 800);
         }} disabled={busy} />
@@ -3039,7 +3179,8 @@ function PreviewScreen({ navigation, route }) {
   return (
     <SafeAreaView style={ui.safe} edges={['bottom']}>
       <TopBar title="Draft Preview" subtitle="SAPS Accident Statement" onBack={() => navigation.goBack()} />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}
+          keyboardShouldPersistTaps="handled">
         <Disclaimer />
         <View style={{ backgroundColor: 'white', borderRadius: 14, borderWidth: 1.5, borderColor: C.border, overflow: 'hidden' }}>
           <View style={{ backgroundColor: C.red, paddingVertical: 14, paddingHorizontal: 20 }}>
@@ -3147,7 +3288,8 @@ function ExportScreen({ navigation, route }) {
   return (
     <SafeAreaView style={ui.safe} edges={['bottom']}>
       <TopBar title="Export Options" subtitle="Share or save your statement" onBack={() => navigation.goBack()} />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}
+          keyboardShouldPersistTaps="handled">
         <Text style={{ fontSize: 15, color: C.grey, lineHeight: 22, marginBottom: 20 }}>Your statement is ready. Generate a branded PDF with your company logo and share or print it.</Text>
         <ExCard icon="📤" title="Share PDF" sub="Send via WhatsApp, Email, or any app" accent onPress={handleShare} />
         <ExCard icon="🖨️" title="Print Statement" sub="Open the print dialog on your device" onPress={handlePrint} />
@@ -3182,7 +3324,8 @@ function AssistanceScreen({ navigation, route }) {
   return (
     <SafeAreaView style={ui.safe} edges={['bottom']}>
       <TopBar title="MyLawSA Assistance" subtitle="Optional" onBack={() => navigation.goBack()} />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={ui.body}
+          keyboardShouldPersistTaps="handled">
         <View style={{ backgroundColor: C.red, borderRadius: 18, padding: 24, marginBottom: 16 }}>
           <Text style={{ fontSize: 38, marginBottom: 14 }}>🏛️</Text>
           <Text style={{ fontSize: 22, fontWeight: '800', color: 'white', letterSpacing: -0.4, marginBottom: 10 }}>Recover Your Vehicle Damage</Text>
@@ -3213,6 +3356,8 @@ function AssistanceScreen({ navigation, route }) {
                 // Fire emails based on consents — non-blocking
                 if (consent) sendEmail(buildEmailParams(finalDraft, 'noms_optin')).catch(() => {});
                 if (finalDraft.consentMarketing) sendEmail(buildEmailParams(finalDraft, 'marketing_optin')).catch(() => {});
+                // Update Firestore record with final consent flags — non-blocking
+                saveReportToFirestore(finalDraft).catch(() => {});
                 setDone(true);
               }} />
       </BottomBar>
@@ -3242,7 +3387,7 @@ function AssistanceScreen({ navigation, route }) {
 // ─────────────────────────────────────────────────────────────────
 const ui = StyleSheet.create({
   safe:        { flex: 1, backgroundColor: C.bg },
-  body:        { padding: 24, paddingBottom: 16 },
+  body:        { padding: 24, paddingBottom: 80 },
   heading:     { fontSize: 28, fontWeight: '800', color: C.red, letterSpacing: -0.5, marginBottom: 10 },
   secLbl:      { fontSize: 11, fontWeight: '700', color: C.grey, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10 },
 
@@ -3269,7 +3414,7 @@ const ui = StyleSheet.create({
 
   btn:         { flex: 1, paddingVertical: 15, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   btnTxt:      { color: 'white', fontSize: 15, fontWeight: '700' },
-  bottomBar:   { flexDirection: 'row', gap: 10, padding: 16, paddingBottom: 28, backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.border },
+  bottomBar:   { flexDirection: 'row', gap: 10, padding: 16, paddingBottom: Platform.OS === 'ios' ? 34 : 20, backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.border },
 
   infoBox:     { flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: C.greyLight, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: C.yellow, padding: 14, marginBottom: 16 },
   disclaimer:  { backgroundColor: C.yellowLight, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: C.yellow, padding: 14, marginBottom: 16 },
@@ -3311,6 +3456,9 @@ const ui = StyleSheet.create({
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  // Sign in anonymously on first launch — silent, no UI impact
+  React.useEffect(() => { ensureFirebaseAuth(); }, []);
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>
