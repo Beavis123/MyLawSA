@@ -3,6 +3,7 @@
  * Expo Go compatible — single App.js
  * Colours: Red · Yellow · Green
  *App at this point in development can do all statement types, send emails out of app to admin and store records into a firebase database, UI is functional. IOS development has to be reviewed and Android must still be published
+ *extra features included: info-block for each of the questions, Laywer validation popup, no placeholders on final statement
  */
 
 import React, { useState, useCallback, useRef } from 'react';
@@ -539,17 +540,18 @@ function createDraft(statementTypeId) {
 const ph = (v, fb) => (v && String(v).trim()) ? String(v).trim() : `[${fb}]`;
 
 function buildCircumstances(key, accident, sub, parties) {
-  const street = ph(accident.street, 'STREET / ROAD');
+  const street = (accident.street && accident.street.trim()) ? accident.street.trim() : 'the road';
   const o      = parties?.[0] ?? {};
-  const oName  = ph(o.name,         'OTHER DRIVER NAME');
-  const oReg   = ph(o.registration, 'OTHER REG');
-  const oMake  = ph(o.make,         'OTHER MAKE');
-  const oModel = ph(o.model,        'OTHER MODEL');
-  const dir    = '[direction of travel]';
+  const oName  = (o.name  && o.name.trim())  ? o.name.trim()  : 'the other driver';
+  const oReg   = (o.registration && o.registration.trim()) ? `registration number ${o.registration.trim()}` : 'with unknown registration';
+  const oMake  = (o.make  && o.make.trim())  ? o.make.trim()  : '';
+  const oModel = (o.model && o.model.trim()) ? o.model.trim() : '';
+  const oVehicle = [oMake, oModel].filter(Boolean).join(' ') || 'vehicle';
+  const dir    = 'the stated';
 
   switch (key) {
     case 'FIXED_OBJECT': {
-      const obj = ph(sub.fq_object, 'OBJECT STRUCK');
+      const obj = sub.fq_object?.trim() || 'a fixed object';
       let p = `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street}. My vehicle made contact with ${obj}, which was situated adjacent to or on the roadway.\n\nAt the time of the incident, the fixed object was stationary and the impact was not as a result of a collision with another moving vehicle.`;
       if (sub.fq_road_cond === 'y' && sub.fq_road_desc) p += `\n\nThe road conditions at the time were ${sub.fq_road_desc.trim()}, which contributed to my loss of vehicle control.`;
       if (sub.fq_avoiding  === 'y') p += `\n\nI was executing an avoidance manoeuvre to prevent a collision with another road user, which caused my vehicle to come into contact with the fixed object.`;
@@ -557,36 +559,36 @@ function buildCircumstances(key, accident, sub, parties) {
       return p + `\n\nAs a result of the impact, my vehicle sustained the damage described in the damage section of this statement.`;
     }
     case 'REAR_END': {
-      const dist = sub.rq_follow?.trim() || '[following distance]';
-      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street}. I was travelling behind the vehicle of ${oName}, registration number ${oReg}, a ${oMake} ${oModel}.\n\nThe vehicle ahead slowed and/or stopped. My vehicle made contact with the rear of the said vehicle. The estimated following distance at the time was ${dist}.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
+      const dist = sub.rq_follow?.trim() || 'unknown';
+      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street}. I was travelling behind the vehicle of ${oName}, ${oReg}, a ${oVehicle}.\n\nThe vehicle ahead slowed and/or stopped. My vehicle made contact with the rear of the said vehicle. The estimated following distance at the time was ${dist}.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
     }
     case 'HEAD_ON':
-      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street}, within my correct lane of travel. The vehicle driven by ${oName}, registration number ${oReg}, a ${oMake} ${oModel}, was travelling in the opposite direction and crossed into my lane of travel, resulting in a frontal collision.\n\nI applied my brakes upon observing the oncoming vehicle in my lane but was unable to avoid the collision. The collision was caused by the other driver's failure to remain within their designated lane of travel.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
+      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street}, within my correct lane of travel. The vehicle driven by ${oName}, ${oReg}, a ${oVehicle}, was travelling in the opposite direction and crossed into my lane of travel, resulting in a frontal collision.\n\nI applied my brakes upon observing the oncoming vehicle in my lane but was unable to avoid the collision. The collision was caused by the other driver's failure to remain within their designated lane of travel.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
     case 'SIDE_IMPACT': {
       const tc = sub.sq_lights === 'y' ? `There were traffic lights at the intersection${sub.sq_green === 'y' ? ' and I had a green light' : ''}. ` : '';
-      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street} and entered the intersection in the normal course of travel. ${tc}The vehicle of ${oName}, registration number ${oReg}, a ${oMake} ${oModel}, approached from the side and collided with my vehicle at the intersection.\n\nThe collision was caused by the failure of the other driver to observe the applicable traffic control devices and/or to yield the right of way to my vehicle.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
+      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street} and entered the intersection in the normal course of travel. ${tc}The vehicle of ${oName}, ${oReg}, a ${oVehicle}, approached from the side and collided with my vehicle at the intersection.\n\nThe collision was caused by the failure of the other driver to observe the applicable traffic control devices and/or to yield the right of way to my vehicle.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
     }
     case 'TURNING': {
       const td = sub.tq_left === 'y' ? 'left' : sub.tq_right === 'y' ? 'right' : '';
-      return `On the date and at the time stated above, I was in the process of executing a ${td ? td + '-turn' : 'turning'} manoeuvre on ${street}. During the turning manoeuvre, the vehicle of ${oName}, registration number ${oReg}, a ${oMake} ${oModel}, collided with my vehicle.\n\nThe collision was caused by the failure of the other driver to exercise due care and to yield the right of way.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
+      return `On the date and at the time stated above, I was in the process of executing a ${td ? td + '-turn' : 'turning'} manoeuvre on ${street}. During the turning manoeuvre, the vehicle of ${oName}, ${oReg}, a ${oVehicle}, collided with my vehicle.\n\nThe collision was caused by the failure of the other driver to exercise due care and to yield the right of way.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
     }
     case 'SIDE_SWIPE':
-      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street}, within my designated lane of travel. The vehicle of ${oName}, registration number ${oReg}, a ${oMake} ${oModel}, was travelling in an adjacent lane in the same direction and moved laterally towards my lane, making scraping contact with my vehicle.\n\nThe collision was caused by the other driver's failure to ensure sufficient clearance before changing lanes.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
+      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street}, within my designated lane of travel. The vehicle of ${oName}, ${oReg}, a ${oVehicle}, was travelling in an adjacent lane in the same direction and moved laterally towards my lane, making scraping contact with my vehicle.\n\nThe collision was caused by the other driver's failure to ensure sufficient clearance before changing lanes.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
     case 'LANE_CHANGE': {
       const lanes = sub.lq_lanes?.trim() || '';
-      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street}. A lane-change collision occurred involving my vehicle and the vehicle of ${oName}, registration number ${oReg}, a ${oMake} ${oModel}.\n\n${lanes ? `The lane change was from ${lanes}. ` : ''}The other vehicle executed a lane change without ensuring that the lane was clear, making contact with my vehicle.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
+      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street}. A lane-change collision occurred involving my vehicle and the vehicle of ${oName}, ${oReg}, a ${oVehicle}.\n\n${lanes ? `The lane change was from ${lanes}. ` : ''}The other vehicle executed a lane change without ensuring that the lane was clear, making contact with my vehicle.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
     }
     case 'PARKING': {
       const area = sub.pq_area_name?.trim() || '';
-      return `On the date and at the time stated above, I was driving within a parking area${area ? ` (${area})` : ''} when a collision occurred involving my vehicle and the vehicle of ${oName}, registration number ${oReg}, a ${oMake} ${oModel}. Both vehicles were manoeuvring within the parking area at very low speed.\n\nThe collision was caused by the other driver's failure to keep a proper lookout and to yield to my vehicle.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
+      return `On the date and at the time stated above, I was driving within a parking area${area ? ` (${area})` : ''} when a collision occurred involving my vehicle and the vehicle of ${oName}, ${oReg}, a ${oVehicle}. Both vehicles were manoeuvring within the parking area at very low speed.\n\nThe collision was caused by the other driver's failure to keep a proper lookout and to yield to my vehicle.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
     }
     case 'MULTI_VEHICLE': {
-      const count = sub.mq_count?.trim()    || '[number of vehicles]';
-      const seq   = sub.mq_sequence?.trim() || '[sequence of impacts]';
-      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street} when a multi-vehicle collision occurred involving ${count}.\n\n${seq}\n\nThe initial impact was caused by the negligence of ${oName}, registration number ${oReg}, a ${oMake} ${oModel}.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
+      const count = sub.mq_count?.trim()    || 'multiple vehicles';
+      const seq   = sub.mq_sequence?.trim() || 'the sequence of impacts is described elsewhere in this statement';
+      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street} when a multi-vehicle collision occurred involving ${count}.\n\n${seq}\n\nThe initial impact was caused by the negligence of ${oName}, ${oReg}.\n\nAs a result of the collision, my vehicle sustained the damage described in the damage section of this statement.`;
     }
     case 'HIT_AND_RUN': {
-      const fled    = sub.hrq_direction?.trim() || '[direction]';
+      const fled    = sub.hrq_direction?.trim() || 'an unknown direction';
       const details = sub.hrq_det_desc ? `\n\nI was able to note the following identifying details of the fleeing vehicle: ${sub.hrq_det_desc.trim()}.` : '';
       return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street} when an unknown vehicle collided with my vehicle. Following the collision, the driver of the other vehicle failed to stop as required by law and fled the scene in a ${fled} direction.${details}\n\nThe incident was reported to the South African Police Service. The damage sustained to my vehicle was caused directly by the collision with the fleeing vehicle.`;
     }
@@ -595,11 +597,11 @@ function buildCircumstances(key, accident, sub, parties) {
       return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street} when a single-vehicle incident occurred involving only my vehicle. No other vehicle was involved in the incident.\n\n${rest ? `My vehicle came to rest at ${rest}. ` : ''}The circumstances of the incident are as captured in the classification section of this statement.\n\nAs a result of the incident, my vehicle sustained the damage described in the damage section of this statement.`;
     }
     case 'PEDESTRIAN': {
-      const user = sub.peq_user?.trim() || 'pedestrian / cyclist / motorcyclist';
-      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street} when a collision occurred involving my vehicle and a ${user}.\n\nThe circumstances of the collision are as captured in the classification section of this statement. My vehicle sustained damage as a result of the collision.`;
+      const user = sub.peq_user?.trim() || 'a pedestrian / road user';
+      return `On the date and at the time stated above, I was travelling in a ${dir} direction along ${street} when a collision occurred involving my vehicle and ${user}.\n\nThe circumstances of the collision are as captured in the classification section of this statement. My vehicle sustained damage as a result of the collision.`;
     }
     default:
-      return `On the date and at the time stated above, I was travelling along ${street} when a road traffic incident occurred.\n\n[PLEASE DESCRIBE THE CIRCUMSTANCES OF THE ACCIDENT IN YOUR OWN WORDS — this accident type could not be automatically classified]\n\nThe other vehicle involved was driven by ${oName}, registration number ${oReg}. As a result of the incident, my vehicle sustained damage.`;
+      return `On the date and at the time stated above, I was travelling along ${street} when a road traffic incident occurred.\n\nThe other vehicle involved was driven by ${oName}${oReg !== 'with unknown registration' ? ', ' + oReg : ''}. As a result of the incident, my vehicle sustained damage.`;
   }
 }
 
@@ -611,21 +613,42 @@ function buildStatement(draft) {
   const o    = pars[0]      || {};
   const line = '─'.repeat(40);
 
+  // Helper — returns value or null (never a placeholder)
+  const v = (val) => (val && String(val).trim()) ? String(val).trim() : null;
+
   const dateStr = accident.date
     ? (() => { const d = new Date(accident.date); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; })()
-    : '[DATE]';
+    : null;
 
   let s = `SAPS ACCIDENT STATEMENT\n${line}\n`;
-  if (accident.estimatedDamage?.trim()) s += `Estimated Vehicle Damage: R ${accident.estimatedDamage.trim()}\n`;
-  if (accident.caseNumber?.trim()) s += `SAPS Case Number: ${accident.caseNumber.trim()}\n`;
+  if (v(accident.estimatedDamage)) s += `Estimated Vehicle Damage: R ${v(accident.estimatedDamage)}\n`;
+  if (v(accident.caseNumber))      s += `SAPS Case Number: ${v(accident.caseNumber)}\n`;
 
-  s += `\nI, ${ph(driver.fullName,'FULL NAME')}, ID / Passport No. ${ph(driver.idNumber,'ID / PASSPORT NUMBER')}, residing at ${driver.address?.trim() || '[RESIDENTIAL ADDRESS]'}, hereby declare the following:\n`;
+  // ── Identity intro — skip empty parts rather than show placeholders ──
+  const nameStr = v(driver.fullName) || 'The Undersigned';
+  const idPart  = v(driver.idNumber) ? `, ID / Passport No. ${v(driver.idNumber)}` : '';
+  const addrPart = v(driver.address) ? `, residing at ${v(driver.address)}` : '';
+  s += `\nI, ${nameStr}${idPart}${addrPart}, hereby declare the following:\n`;
+
   s += `\n${line}\n1. MY VEHICLE\n${line}\n`;
-  s += `I am the ${driver.relationship || 'owner'} of a ${ph(vehicle.colour,'COLOUR')} ${ph(vehicle.year,'YEAR')} ${ph(vehicle.make,'MAKE')} ${ph(vehicle.model,'MODEL')}, registration number ${ph(vehicle.registration,'REGISTRATION')}.\n`;
-  if (vehicle.trailerInvolved && vehicle.trailerReg) s += `A trailer with registration number ${vehicle.trailerReg} was also attached to my vehicle.\n`;
+  const relStr    = v(driver.relationship) || 'owner';
+  const colourStr = v(vehicle.colour)  ? `${v(vehicle.colour)} ` : '';
+  const yearStr   = v(vehicle.year)    ? `${v(vehicle.year)} `   : '';
+  const makeStr   = v(vehicle.make)    ? `${v(vehicle.make)} `   : '';
+  const modelStr  = v(vehicle.model)   ? `${v(vehicle.model)}`   : '';
+  const regStr    = v(vehicle.registration) ? `, registration number ${v(vehicle.registration)}` : '';
+  s += `I am the ${relStr} of a ${colourStr}${yearStr}${makeStr}${modelStr}${regStr}.\n`;
+  if (vehicle.trailerInvolved && v(vehicle.trailerReg))
+    s += `A trailer with registration number ${v(vehicle.trailerReg)} was also attached to my vehicle.\n`;
 
   s += `\n${line}\n2. THE ACCIDENT\n${line}\n`;
-  s += `On ${dateStr} at approximately ${accident.time || '[TIME]'}, I was involved in a road traffic accident on ${ph(accident.street,'STREET / ROAD')}${accident.landmark?.trim() ? `, near ${accident.landmark.trim()}` : ''}, in ${ph(accident.city,'CITY')}, ${accident.province || '[PROVINCE]'}.\n`;
+  const streetStr = v(accident.street) ? `on ${v(accident.street)}` : 'at the location described';
+  const landmarkPart = v(accident.landmark) ? `, near ${v(accident.landmark)}` : '';
+  const cityStr   = v(accident.city)     ? `, in ${v(accident.city)}`     : '';
+  const provStr   = v(accident.province) ? `, ${v(accident.province)}`    : '';
+  s += `On ${dateStr || 'the date stated'}`;
+  if (v(accident.time)) s += ` at approximately ${v(accident.time)}`;
+  s += `, I was involved in a road traffic accident ${streetStr}${landmarkPart}${cityStr}${provStr}.\n`;
 
   s += `\n${line}\n3. CIRCUMSTANCES\n${line}\n`;
   s += buildCircumstances(accidentKey, accident, sub, pars) + '\n';
@@ -633,12 +656,22 @@ function buildStatement(draft) {
   s += `\n${line}\n4. OTHER PARTY\n${line}\n`;
   if (pars.length > 0) {
     pars.forEach((p, i) => {
-      s += `${i > 0 ? '\n' : ''}The ${i === 0 ? 'other' : `additional (${i+1})`} vehicle involved was a ${ph(p.make,'MAKE')} ${ph(p.model,'MODEL')}, registration number ${ph(p.registration,'REG')}, driven by ${ph(p.name,'DRIVER NAME')}.\n`;
+      const pMake  = v(p.make)  || 'unknown make';
+      const pModel = v(p.model) || 'unknown model';
+      const pReg   = v(p.registration) ? `, registration number ${v(p.registration)}` : '';
+      const pName  = v(p.name)  ? `, driven by ${v(p.name)}`  : '';
+      s += `${i > 0 ? '\n' : ''}The ${i === 0 ? 'other' : `additional (${i+1})`} vehicle involved was a ${pMake} ${pModel}${pReg}${pName}.\n`;
     });
   } else {
-    s += `The other vehicle involved was a ${ph(o.make,'OTHER MAKE')} ${ph(o.model,'OTHER MODEL')}, registration number ${ph(o.registration,'OTHER REG')}, driven by ${ph(o.name,'OTHER DRIVER NAME')}.\n`;
+    s += `No other party details were captured at this time.\n`;
   }
-  if (wits.length > 0) { s += `\nWitness(es):\n`; wits.forEach((w,i) => { s += `${i+1}. ${ph(w.name,'WITNESS NAME')}${w.contact ? ` — ${w.contact}` : ''}\n`; }); }
+  if (wits.length > 0) {
+    s += `\nWitness(es):\n`;
+    wits.forEach((w, i) => {
+      const wName = v(w.name);
+      if (wName) s += `${i+1}. ${wName}${v(w.contact) ? ` — ${v(w.contact)}` : ''}\n`;
+    });
+  }
 
   s += `\n${line}\n5. DAMAGES\n${line}\n`;
   s += `My vehicle sustained damage as a result of the collision.\n`;
@@ -683,14 +716,58 @@ function ProgressBar({ step, total, label }) {
   );
 }
 
-function FieldLabel({ children, required }) {
-  return <Text style={ui.fieldLbl}>{children}{required ? <Text style={{ color: C.yellow }}> *</Text> : null}</Text>;
+// ─── Info Tooltip — shown next to field labels ───────────────────
+function InfoTooltip({ text }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <View style={{ marginLeft: 6 }}>
+      <TouchableOpacity
+        onPress={() => setOpen(v => !v)}
+        activeOpacity={0.75}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        style={{
+          width: 18, height: 18, borderRadius: 9,
+          backgroundColor: open ? C.yellow : C.border,
+          alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <Text style={{ color: open ? 'white' : C.grey, fontSize: 11, fontWeight: '800', lineHeight: 14 }}>i</Text>
+      </TouchableOpacity>
+      {open && (
+        <View style={{
+          marginTop: 6, backgroundColor: C.yellowLight,
+          borderRadius: 10, borderLeftWidth: 3, borderLeftColor: C.yellow,
+          padding: 10, zIndex: 50,
+        }}>
+          <Text style={{ fontSize: 12, color: C.yellow2, lineHeight: 18 }}>{text}</Text>
+          <TouchableOpacity
+            onPress={() => setOpen(false)}
+            style={{ position: 'absolute', top: 6, right: 8 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={{ color: C.yellow2, fontSize: 13, fontWeight: '700' }}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
 }
 
-function Field({ label, required, children, style }) {
+function FieldLabel({ children, required, info }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+      <Text style={[ui.fieldLbl, { marginBottom: 0, flex: 1 }]}>
+        {children}{required ? <Text style={{ color: C.yellow }}> *</Text> : null}
+      </Text>
+      {info ? <InfoTooltip text={info} /> : null}
+    </View>
+  );
+}
+
+function Field({ label, required, children, style, info }) {
   return (
     <View style={[{ marginBottom: 14 }, style]}>
-      <FieldLabel required={required}>{label}</FieldLabel>
+      <FieldLabel required={required} info={info}>{label}</FieldLabel>
       {children}
     </View>
   );
@@ -1386,31 +1463,31 @@ const GENERIC_FLOWS = {
   crime_theft_personal: {
     sections: [
       { title: 'Your Details', fields: [
-        { id:'fullName',    label:'Full Name',                    type:'text',     required:true,  placeholder:'e.g. Thabo Nkosi' },
-        { id:'idNumber',    label:'ID / Passport Number',         type:'text',     required:true,  placeholder:'13-digit ID number', keyboard:'phone-pad', maxLen:13 },
-        { id:'address',     label:'Residential Address',          type:'text',     required:true,  placeholder:'Street, Suburb, City' },
-        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
+        { id:'fullName',    label:'Full Name',                    type:'text',     required:true,  placeholder:'e.g. Thabo Nkosi', info:'Your full legal name as it appears on your South African ID document or passport.' },
+        { id:'idNumber',    label:'ID / Passport Number',         type:'text',     required:true,  placeholder:'13-digit ID number', keyboard:'phone-pad', maxLen:13, info:'Your 13-digit South African ID number. Foreign nationals may enter their passport number instead.' },
+        { id:'address',     label:'Residential Address',          type:'text',     required:true,  placeholder:'Street, Suburb, City', info:'Your current home address — include street number, street name, suburb, and city.' },
+        { id:'cell',        label:'Cell Number',                  type:'text',     required:true,  placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10, info:'Your 10-digit South African mobile number starting with 0 (e.g. 0821234567).' },
       ]},
       { title: 'Incident Details', fields: [
-        { id:'date',        label:'Date of Theft',                type:'date',     required:true },
-        { id:'time',        label:'Approximate Time',             type:'time',     required:true },
-        { id:'location',    label:'Location / Address of Theft',  type:'text',     required:true,  placeholder:'e.g. Corner Main & First Street, Johannesburg' },
-        { id:'province',    label:'Province',                     type:'picker',   required:false, options:'PROVINCES' },
+        { id:'date',        label:'Date of Theft',                type:'date',     required:true, info:'The date on which the theft occurred.' },
+        { id:'time',        label:'Approximate Time',             type:'time',     required:true, info:'Your best estimate of the time at which the theft occurred.' },
+        { id:'location',    label:'Location / Address of Theft',  type:'text',     required:true,  placeholder:'e.g. Corner Main & First Street, Johannesburg', info:'The full street address or specific location where the theft took place.' },
+        { id:'province',    label:'Province',                     type:'picker',   required:false, options:'PROVINCES', info:'The South African province in which the theft occurred.' },
       ]},
       { title: 'Items Stolen', fields: [
-        { id:'items',       label:'Describe Items Stolen',        type:'textarea', required:true,  placeholder:'List each item, include make/model/serial numbers where possible' },
-        { id:'totalValue',  label:'Estimated Total Value (R)',    type:'text',     required:false, placeholder:'e.g. R 8 500', keyboard:'numeric' },
-        { id:'estimatedDamage', label:'Estimated Total Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 8 500', keyboard:'numeric' },
-        { id:'serialNums',  label:'Serial / IMEI Numbers (if known)', type:'text', required:false, placeholder:'e.g. IMEI: 356938035643809' },
+        { id:'items',       label:'Describe Items Stolen',        type:'textarea', required:true,  placeholder:'List each item, include make/model/serial numbers where possible', info:'List every item that was stolen. Include the make, model, colour, and serial or IMEI numbers where you have them.' },
+        { id:'totalValue',  label:'Estimated Total Value (R)',    type:'text',     required:false, placeholder:'e.g. R 8 500', keyboard:'numeric', info:'Your best estimate of the total replacement value of all stolen items in South African Rand.' },
+        { id:'estimatedDamage', label:'Estimated Total Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 8 500', keyboard:'numeric', info:'The total estimated financial loss, including the value of stolen items and any other related costs.' },
+        { id:'serialNums',  label:'Serial / IMEI Numbers (if known)', type:'text', required:false, placeholder:'e.g. IMEI: 356938035643809', info:'If you have serial numbers, IMEI numbers, or other identifying numbers for stolen devices or items, enter them here.' },
       ]},
       { title: 'Circumstances', fields: [
         { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
         { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
-        { id:'circumstances', label:'Describe What Happened',     type:'textarea', required:true,  placeholder:'Describe clearly what happened leading up to, during, and after the theft' },
-        { id:'suspectDesc',   label:'Suspect Description (if seen)', type:'textarea', required:false, placeholder:'e.g. Male, approximately 25 years, wearing red jacket' },
-        { id:'witnessName',   label:'Witness Name (if any)',      type:'text',     required:false, placeholder:'Full name of witness' },
-        { id:'witnessCell',   label:'Witness Contact Number',     type:'text',     required:false, placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10 },
-        { id:'caseNumber',    label:'SAPS Case Number (if obtained)', type:'text', required:false, placeholder:'e.g. CAS 123/02/2025' },
+        { id:'circumstances', label:'Describe What Happened',     type:'textarea', required:true,  placeholder:'Describe clearly what happened leading up to, during, and after the theft', info:'Give a clear, factual, and chronological account of what happened. Describe events before, during, and after the theft — based on facts only.' },
+        { id:'suspectDesc',   label:'Suspect Description (if seen)', type:'textarea', required:false, placeholder:'e.g. Male, approximately 25 years, wearing red jacket', info:'If you saw the suspect, describe them as accurately as possible — sex, approximate age, height, build, clothing, and any distinguishing features.' },
+        { id:'witnessName',   label:'Witness Name (if any)',      type:'text',     required:false, placeholder:'Full name of witness', info:'The full name of any person who witnessed the theft and can corroborate your account.' },
+        { id:'witnessCell',   label:'Witness Contact Number',     type:'text',     required:false, placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10, info:'A contact number for the witness — used for follow-up by investigators or attorneys.' },
+        { id:'caseNumber',    label:'SAPS Case Number (if obtained)', type:'text', required:false, placeholder:'e.g. CAS 123/02/2025', info:'If you have already reported the theft to SAPS and received a case number, enter it here. Leave blank if not yet reported.' },
       ]},
     ],
   },
@@ -2405,13 +2482,16 @@ function GenericFormScreen({ navigation, route }) {
 
           if (f.type === 'ynu') return (
             <View key={f.id} style={[ui.subCard, { marginBottom: 14 }]}>
-              <Text style={ui.subTxt}>{f.label}{f.required ? <Text style={{ color:C.yellow }}> *</Text> : null}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={[ui.subTxt, { flex: 1, marginBottom: 0 }]}>{f.label}{f.required ? <Text style={{ color:C.yellow }}> *</Text> : null}</Text>
+                {f.info ? <InfoTooltip text={f.info} /> : null}
+              </View>
               <YNU value={val} onChange={v => setAnswer(f.id, v)} />
             </View>
           );
 
           if (f.type === 'date') return (
-            <Field key={f.id} label={f.label} required={f.required}>
+            <Field key={f.id} label={f.label} required={f.required} info={f.info}>
               <PickBtn
                 value={val ? formatDateDisplay(val) : ''}
                 placeholder="Select date"
@@ -2421,7 +2501,7 @@ function GenericFormScreen({ navigation, route }) {
           );
 
           if (f.type === 'time') return (
-            <Field key={f.id} label={f.label} required={f.required}>
+            <Field key={f.id} label={f.label} required={f.required} info={f.info}>
               <PickBtn
                 value={val}
                 placeholder="Select time"
@@ -2433,7 +2513,7 @@ function GenericFormScreen({ navigation, route }) {
           if (f.type === 'picker') {
             const opts = f.options === 'PROVINCES' ? PROVINCES : f.options;
             return (
-              <Field key={f.id} label={f.label} required={f.required}>
+              <Field key={f.id} label={f.label} required={f.required} info={f.info}>
                 <PickBtn
                   value={val}
                   placeholder="Select..."
@@ -2445,7 +2525,7 @@ function GenericFormScreen({ navigation, route }) {
 
           // text / textarea
           return (
-            <Field key={f.id} label={f.label} required={f.required}>
+            <Field key={f.id} label={f.label} required={f.required} info={f.info}>
               <Inp
                 placeholder={f.placeholder || ''}
                 value={val}
@@ -2590,10 +2670,11 @@ function buildGenericStatement(draft) {
   const flow     = GENERIC_FLOWS[typeId];
   const answers  = draft.genericAnswers || {};
   const line     = '─'.repeat(40);
-  const gph      = (id, fb) => (answers[id] && String(answers[id]).trim()) ? String(answers[id]).trim() : `[${fb || id.toUpperCase()}]`;
-  const yn       = (id) => answers[id] === 'y' ? 'Yes' : answers[id] === 'n' ? 'No' : answers[id] === 'u' ? 'Unknown' : '[Not specified]';
-  const fmtDate  = (id) => {
-    if (!answers[id]) return '[DATE]';
+  // Returns trimmed value or null — never a placeholder string
+  const gv    = (id) => (answers[id] && String(answers[id]).trim()) ? String(answers[id]).trim() : null;
+  const yn    = (id) => answers[id] === 'y' ? 'Yes' : answers[id] === 'n' ? 'No' : answers[id] === 'u' ? 'Unknown' : null;
+  const fmtDate = (id) => {
+    if (!answers[id]) return null;
     const d = new Date(answers[id]);
     return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
   };
@@ -2601,8 +2682,11 @@ function buildGenericStatement(draft) {
   let s = `AFFIDAVIT\n`;
   s += `${typeInfo.categoryLabel ? typeInfo.categoryLabel.toUpperCase() + ' — ' : ''}${(typeInfo.label || typeId).toUpperCase()}\n`;
   s += `${line}\n\n`;
-  s += `I, ${gph('fullName','FULL NAME')}, Identity / Passport Number: ${gph('idNumber','ID NUMBER')}, `;
-  s += `do hereby make oath and state the following:\n\n`;
+
+  // Header — conditionally include ID number
+  const fullName = gv('fullName') || 'The Undersigned';
+  const idNumber = gv('idNumber');
+  s += `I, ${fullName}${idNumber ? `, Identity / Passport Number: ${idNumber}` : ''}, do hereby make oath and state the following:\n\n`;
 
   if (!flow) return s + '[Statement content unavailable — please complete manually]\n';
 
@@ -2610,14 +2694,20 @@ function buildGenericStatement(draft) {
     s += `${line}\n${si + 1}. ${sec.title.toUpperCase()}\n${line}\n`;
     sec.fields.forEach(f => {
       if (f.id === 'fullName' || f.id === 'idNumber') return; // already in header
-      let val = '';
-      if (f.type === 'date')   val = fmtDate(f.id);
+      let val = null;
+      if (f.type === 'date')    val = fmtDate(f.id);
       else if (f.type === 'ynu') val = yn(f.id);
-      else val = answers[f.id] ? String(answers[f.id]).trim() : '[Not provided]';
-      if (f.id === 'estimatedDamage' && val && val !== '[Not provided]') {
+      else val = gv(f.id);
+
+      // Skip entirely if no value — no placeholders in final statement
+      if (!val) return;
+
+      if (f.id === 'estimatedDamage') {
         const cleaned = val.replace(/^R\s*/i, '');
         s += `${f.label}: R ${cleaned}\n`;
-      } else if (val && val !== '[Not provided]') s += `${f.label}: ${val}\n`;
+      } else {
+        s += `${f.label}: ${val}\n`;
+      }
     });
     s += `\n`;
   });
@@ -2629,7 +2719,7 @@ function buildGenericStatement(draft) {
   s += `I consider the prescribed oath to be binding on my conscience.\n\n`;
   s += `Signed at ___________________________ on this _____ day of _________________ 20_____\n\n`;
   s += `Signature: __________________________\n\n`;
-  s += `Full Name: ${gph('fullName','FULL NAME')}\n\n`;
+  s += `Full Name: ${fullName}\n\n`;
   s += `Before me:\n\n`;
   s += `Commissioner of Oaths: __________________________\n\n`;
   s += `Designation: __________________________\n\n`;
@@ -2642,6 +2732,9 @@ function buildGenericStatement(draft) {
 // SCREEN 1 — SPLASH (Vehicle Accident — existing flow)
 // ─────────────────────────────────────────────────────────────────
 function SplashScreen({ navigation }) {
+  const [showConflict, setShowConflict] = useState(false);
+  const [conflictChoice, setConflictChoice] = useState(null); // 'yes' | 'no'
+
   return (
     <View style={{ flex: 1, backgroundColor: C.red }}>
       <StatusBar barStyle="light-content" backgroundColor={C.red} />
@@ -2664,7 +2757,7 @@ function SplashScreen({ navigation }) {
           <Text style={sp.sub}>From incident to accident statement — made easy. Create a clear, accurate SAPS accident statement step by step.</Text>
           <View style={{ height: 32 }} />
           <Text style={sp.tagline}>A FREE SERVICE BY MYLAWSA</Text>
-          <TouchableOpacity style={sp.btnPrimary} onPress={() => navigation.navigate('Welcome')} activeOpacity={0.85}>
+          <TouchableOpacity style={sp.btnPrimary} onPress={() => { setConflictChoice(null); setShowConflict(true); }} activeOpacity={0.85}>
             <Text style={{ color: 'white', fontSize: 17, fontWeight: '800' }}>Get Started →</Text>
           </TouchableOpacity>
           <TouchableOpacity style={sp.btnOutline} onPress={() => navigation.navigate('Reports')} activeOpacity={0.85}>
@@ -2675,6 +2768,84 @@ function SplashScreen({ navigation }) {
           </Text>
         </ScrollView>
       </SafeAreaView>
+
+      {/* ── Conflict of Interest Check Modal ── */}
+      <Modal visible={showConflict} transparent animationType="fade" onRequestClose={() => setShowConflict(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: 'white', borderRadius: 20, padding: 24 }}>
+            {/* Header */}
+            <View style={{ alignItems: 'center', marginBottom: 18 }}>
+              <Image source={{ uri: LOGO_B64 }} style={{ width: 48, height: 48, borderRadius: 12, marginBottom: 10 }} resizeMode="contain" />
+              <Text style={{ fontSize: 18, fontWeight: '800', color: C.red, textAlign: 'center' }}>Before We Get Started</Text>
+              <Text style={{ fontSize: 12, color: C.grey, letterSpacing: 1, textTransform: 'uppercase', marginTop: 4 }}>Important — please answer honestly</Text>
+            </View>
+
+            <Text style={{ fontSize: 14, color: C.text, lineHeight: 22, marginBottom: 20, textAlign: 'center' }}>
+              Is another attorney or law firm currently handling this vehicle accident case on your behalf?
+            </Text>
+
+            {/* Radio choices */}
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+              {[{ label: 'Yes, I have a lawyer', value: 'yes' }, { label: 'No, I do not', value: 'no' }].map(opt => {
+                const sel = conflictChoice === opt.value;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={{
+                      flex: 1, paddingVertical: 14, borderRadius: 12,
+                      borderWidth: 2,
+                      borderColor: sel ? (opt.value === 'yes' ? C.red : C.green) : C.border,
+                      backgroundColor: sel ? (opt.value === 'yes' ? C.redLight : C.greenLight) : C.greyLight,
+                      alignItems: 'center',
+                    }}
+                    onPress={() => setConflictChoice(opt.value)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: sel ? (opt.value === 'yes' ? C.red : C.green) : C.grey, textAlign: 'center' }}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Response message when "yes" is selected */}
+            {conflictChoice === 'yes' && (
+              <View style={{ backgroundColor: C.redLight, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: C.red, padding: 14, marginBottom: 16 }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: C.red, marginBottom: 6 }}>⚠️ We Are Unable to Assist</Text>
+                <Text style={{ fontSize: 13, color: C.red2, lineHeight: 20 }}>
+                  We appreciate your honesty. However, MyLawSA is unable to take on cases where another legal representative is already involved, as this would constitute a conflict of interest.{'\n\n'}
+                  Our service is designed for cases where MyLawSA can take full ownership of the matter from start to finish. If your current representation is no longer active, you are welcome to return and start a new case with us.
+                </Text>
+                <TouchableOpacity
+                  style={{ backgroundColor: C.red, borderRadius: 10, paddingVertical: 13, alignItems: 'center', marginTop: 14 }}
+                  onPress={() => { setShowConflict(false); navigation.navigate('Home'); }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>Return to Home</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Continue button when "no" is selected */}
+            {conflictChoice === 'no' && (
+              <TouchableOpacity
+                style={{ backgroundColor: C.green, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 8 }}
+                onPress={() => { setShowConflict(false); navigation.navigate('Welcome'); }}
+                activeOpacity={0.85}
+              >
+                <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>Continue →</Text>
+              </TouchableOpacity>
+            )}
+
+            {conflictChoice === null && (
+              <TouchableOpacity onPress={() => setShowConflict(false)} style={{ paddingVertical: 10, alignItems: 'center' }}>
+                <Text style={{ color: C.grey, fontSize: 13 }}>Cancel</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -2846,8 +3017,8 @@ function DetailsScreen({ navigation, route }) {
         <Tabs tabs={['Driver', 'Vehicle', 'Accident']} active={tab} onPress={i => { if (i < tab) setTab(i); }} />
 
         {tab === 0 && <>
-          <Field label="Full Name" required><Inp placeholder="e.g. John Dlamini" value={draft.driver.fullName} onChangeText={v => ud('fullName', v)} /></Field>
-          <Field label="Cell Number" required>
+          <Field label="Full Name" required info="Enter your full legal name exactly as it appears on your South African ID document or passport."><Inp placeholder="e.g. John Dlamini" value={draft.driver.fullName} onChangeText={v => ud('fullName', v)} /></Field>
+          <Field label="Cell Number" required info="Your 10-digit South African mobile number starting with 0 (e.g. 0821234567). This is used for follow-up communication.">
             <Inp
               placeholder="e.g. 0821234567"
               value={draft.driver.cellOrEmail}
@@ -2856,7 +3027,7 @@ function DetailsScreen({ navigation, route }) {
               error={draft.driver.cellOrEmail && !isValidCell(draft.driver.cellOrEmail) ? 'Must be exactly 10 digits' : null}
             />
           </Field>
-          <Field label="ID Number" required>
+          <Field label="ID Number" required info="Your 13-digit South African ID number. This uniquely identifies you in the statement. The last digit is a mathematically calculated check digit — the app will verify it is correct.">
             <Inp
               placeholder="13-digit South African ID number"
               value={draft.driver.idNumber}
@@ -2865,40 +3036,57 @@ function DetailsScreen({ navigation, route }) {
               error={draft.driver.idNumber && !isValidID(draft.driver.idNumber) ? (draft.driver.idNumber.length !== 13 ? 'Must be exactly 13 digits' : 'Invalid ID number — check digit incorrect') : null}
             />
           </Field>
-          <Field label="Residential Address"><Inp placeholder="Street, Suburb, City" value={draft.driver.address} onChangeText={v => ud('address', v)} /></Field>
-          <Field label="Driver's Licence Number"><Inp placeholder="Licence number" value={draft.driver.licenceNumber} onChangeText={v => ud('licenceNumber', v)} /></Field>
-          <Field label="Relationship to Vehicle" required><PickBtn value={draft.driver.relationship} placeholder="Select..." onPress={() => setRel(true)} /></Field>
+          <Field label="Residential Address" info="Your current home address — include street number, street name, suburb, and city."><Inp placeholder="Street, Suburb, City" value={draft.driver.address} onChangeText={v => ud('address', v)} /></Field>
+          <Field label="Driver's Licence Number" info="The number printed on your South African driver's licence card. Leave blank if not available."><Inp placeholder="Licence number" value={draft.driver.licenceNumber} onChangeText={v => ud('licenceNumber', v)} /></Field>
+          <Field label="Relationship to Vehicle" required info="Describe your relationship to the vehicle — e.g. Owner (you own it), Renter (hired/leased), Employee (company vehicle), Borrowed (borrowed from someone), or Other."><PickBtn value={draft.driver.relationship} placeholder="Select..." onPress={() => setRel(true)} /></Field>
         </>}
 
         {tab === 1 && <>
-          <Field label="Registration Number" required><Inp placeholder="e.g. GP 123-456" value={draft.vehicle.registration} onChangeText={v => uv('registration', v)} /></Field>
+          <Field label="Registration Number" required info="The official vehicle licence plate number as displayed on your vehicle (e.g. GP 123-456)."><Inp placeholder="e.g. GP 123-456" value={draft.vehicle.registration} onChangeText={v => uv('registration', v)} /></Field>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Field label="Make" style={{ flex: 1 }}><Inp placeholder="e.g. Toyota" value={draft.vehicle.make} onChangeText={v => uv('make', v)} /></Field>
-            <Field label="Model" style={{ flex: 1 }}><Inp placeholder="e.g. Corolla" value={draft.vehicle.model} onChangeText={v => uv('model', v)} /></Field>
+            <Field label="Make" style={{ flex: 1 }} info="The manufacturer/brand of the vehicle (e.g. Toyota, BMW, Volkswagen, Ford)."><Inp placeholder="e.g. Toyota" value={draft.vehicle.make} onChangeText={v => uv('make', v)} /></Field>
+            <Field label="Model" style={{ flex: 1 }} info="The specific model name of the vehicle (e.g. Corolla, X3, Polo, Ranger)."><Inp placeholder="e.g. Corolla" value={draft.vehicle.model} onChangeText={v => uv('model', v)} /></Field>
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Field label="Year" style={{ flex: 1 }}><Inp placeholder="e.g. 2019" value={draft.vehicle.year} onChangeText={v => uv('year', v)} keyboardType="numeric" /></Field>
-            <Field label="Colour" style={{ flex: 1 }}><Inp placeholder="e.g. Silver" value={draft.vehicle.colour} onChangeText={v => uv('colour', v)} /></Field>
+            <Field label="Year" style={{ flex: 1 }} info="The year the vehicle was manufactured or the model year (e.g. 2019)."><Inp placeholder="e.g. 2019" value={draft.vehicle.year} onChangeText={v => uv('year', v)} keyboardType="numeric" /></Field>
+            <Field label="Colour" style={{ flex: 1 }} info="The primary colour of the vehicle as it appears. Use a single descriptive word (e.g. Silver, White, Dark Blue)."><Inp placeholder="e.g. Silver" value={draft.vehicle.colour} onChangeText={v => uv('colour', v)} /></Field>
           </View>
           <CheckRow label="Trailer involved?" checked={draft.vehicle.trailerInvolved} onChange={v => uv('trailerInvolved', v)} />
-          {draft.vehicle.trailerInvolved && <Field label="Trailer Registration" style={{ marginTop: 10 }}><Inp placeholder="Trailer registration number" value={draft.vehicle.trailerReg} onChangeText={v => uv('trailerReg', v)} /></Field>}
+          {draft.vehicle.trailerInvolved && <Field label="Trailer Registration" style={{ marginTop: 10 }} info="The registration plate number of the trailer that was attached to your vehicle at the time of the accident."><Inp placeholder="Trailer registration number" value={draft.vehicle.trailerReg} onChangeText={v => uv('trailerReg', v)} /></Field>}
         </>}
 
         {tab === 2 && <>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Field label="Date" required style={{ flex: 1 }}>
+            <Field label="Date" required style={{ flex: 1 }} info="The date on which the accident occurred. Future dates are not allowed — this must be a past date.">
               <PickBtn value={draft.accident.date ? (() => { const d = new Date(draft.accident.date); return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)} ${d.getFullYear()}`; })() : ''} placeholder="Select date" onPress={() => setDate(true)} />
             </Field>
-            <Field label="Time" required style={{ flex: 1 }}>
+            <Field label="Time" required style={{ flex: 1 }} info="The approximate time at which the accident occurred. Use your best recollection.">
               <PickBtn value={draft.accident.time} placeholder="Select time" onPress={() => setTime(true)} />
             </Field>
           </View>
-          <Field label="Street / Road" required><Inp placeholder="e.g. Commissioner Street, Johannesburg" value={draft.accident.street} onChangeText={v => ua('street', v)} /></Field>
-          <Field label="Nearest Landmark or Intersection"><Inp placeholder="e.g. Near KFC / Corner of Main Road" value={draft.accident.landmark} onChangeText={v => ua('landmark', v)} /></Field>
-          <Field label="City / Town" required><Inp placeholder="e.g. Johannesburg" value={draft.accident.city} onChangeText={v => ua('city', v)} /></Field>
-          <Field label="Province"><PickBtn value={draft.accident.province} placeholder="Select province..." onPress={() => setProv(true)} /></Field>
-          <Field label="Estimated Vehicle Damage (R)"><Inp placeholder="e.g. R 35 000" value={draft.accident.estimatedDamage} onChangeText={v => ua('estimatedDamage', v)} keyboardType="numeric" /></Field>
-          <Field label="SAPS Case Number (if known)"><Inp placeholder="e.g. CAS 123/02/2025" value={draft.accident.caseNumber} onChangeText={v => ua('caseNumber', v)} /></Field>
+          <Field label="Street / Road" required info="The full name of the road or street where the accident took place (e.g. Commissioner Street, Johannesburg CBD)."><Inp placeholder="e.g. Commissioner Street, Johannesburg" value={draft.accident.street} onChangeText={v => ua('street', v)} /></Field>
+          <Field label="Nearest Landmark or Intersection" info="A nearby recognisable landmark, building, or cross-street that helps identify the exact location of the accident (e.g. Near KFC, Corner of Main & First Street)."><Inp placeholder="e.g. Near KFC / Corner of Main Road" value={draft.accident.landmark} onChangeText={v => ua('landmark', v)} /></Field>
+          <Field label="City / Town" required info="The name of the city or town where the accident occurred (e.g. Johannesburg, Pretoria, Cape Town)."><Inp placeholder="e.g. Johannesburg" value={draft.accident.city} onChangeText={v => ua('city', v)} /></Field>
+          <Field label="Province" info="The South African province in which the accident occurred. Select from the list."><PickBtn value={draft.accident.province} placeholder="Select province..." onPress={() => setProv(true)} /></Field>
+          <Field label="Estimated Vehicle Damage (R)" info="Enter the total estimated cost of all accident-related damages in South African Rand.">
+            <Inp placeholder="e.g. R 35 000" value={draft.accident.estimatedDamage} onChangeText={v => ua('estimatedDamage', v)} keyboardType="numeric" />
+          </Field>
+          {/* Damage cost breakdown info block */}
+          <View style={[ui.infoBox, { marginTop: -6, marginBottom: 14 }]}>
+            <Text style={{ fontSize: 16 }}>💡</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: C.grey, marginBottom: 4 }}>What to include in your damage estimate:</Text>
+              <Text style={{ fontSize: 12, color: C.grey, lineHeight: 18 }}>
+                Your total should include <Text style={{ fontWeight: '700' }}>all</Text> costs arising from the accident:{'\n'}
+                • Tow truck / vehicle recovery fees{'\n'}
+                • Car hire / alternative transport during repairs{'\n'}
+                • Transport costs while your car was off the road{'\n'}
+                • Actual cost of repairs to your vehicle{'\n'}
+                • Any other related expenses
+              </Text>
+            </View>
+          </View>
+          <Field label="SAPS Case Number (if known)" info="If SAPS attended the scene and issued you with a case number, enter it here (e.g. CAS 123/02/2025). Leave blank if no case number was issued yet."><Inp placeholder="e.g. CAS 123/02/2025" value={draft.accident.caseNumber} onChangeText={v => ua('caseNumber', v)} /></Field>
         </>}
       </ScrollView>
 
@@ -2949,6 +3137,20 @@ function ClassifierScreen({ navigation, route }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* ── Fault Disclaimer ── */}
+        <View style={{
+          backgroundColor: '#FFF8E1', borderRadius: 12,
+          borderLeftWidth: 4, borderLeftColor: C.yellow,
+          padding: 14, marginBottom: 16,
+        }}>
+          <Text style={{ fontSize: 11, fontWeight: '800', color: C.yellow2, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>
+            ⚠️ Legal Notice — Read Before Answering
+          </Text>
+          <Text style={{ fontSize: 12, color: C.yellow2, lineHeight: 18 }}>
+            Do not admit fault, acknowledge blame, or imply guilt in any of your answers. Answer each question based on objective facts only — what physically happened, not who you think was responsible. Your answers will be used to generate an official statement and may be relied upon in legal proceedings.
+          </Text>
+        </View>
+
         <View style={cl.card}>
           <View style={cl.badge}><Text style={{ color: 'white', fontSize: 12, fontWeight: '700' }}>Q{curId}</Text></View>
           <Text style={cl.qTxt}>{q.text}</Text>
@@ -2962,7 +3164,7 @@ function ClassifierScreen({ navigation, route }) {
             <Text style={{ fontSize: 18, fontWeight: '700', color: 'white' }}>Yes</Text>
           </TouchableOpacity>
         </View>
-        <InfoBox>Answer each question honestly. The more accurate your answers, the better your statement will be.</InfoBox>
+        <InfoBox>Answer each question factually and accurately. The more precise your answers, the better your statement will be.</InfoBox>
       </ScrollView>
     </SafeAreaView>
   );
@@ -2995,6 +3197,19 @@ function OutcomeScreen({ navigation, route }) {
           description={outcome.claimable ? 'This accident type may be claimable against the at-fault driver. MyLawSA can assist you with recovery at no upfront cost.' : 'This incident type is generally not insurable or claimable against a third party.'}
         />
         {outcome.subQs?.length > 0 && <>
+          {/* ── Fault Disclaimer ── */}
+          <View style={{
+            backgroundColor: '#FFF8E1', borderRadius: 12,
+            borderLeftWidth: 4, borderLeftColor: C.yellow,
+            padding: 14, marginBottom: 16,
+          }}>
+            <Text style={{ fontSize: 11, fontWeight: '800', color: C.yellow2, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>
+              ⚠️ Answer Factually — Do Not Admit Fault
+            </Text>
+            <Text style={{ fontSize: 12, color: C.yellow2, lineHeight: 18 }}>
+              These follow-up questions relate directly to the circumstances of the accident. Answer based on observable facts only. Do not acknowledge blame, imply fault, or speculate about responsibility. Your answers will form part of your official statement.
+            </Text>
+          </View>
           <View style={ui.card}>
             <Text style={ui.cardTitle}>Follow-up Questions</Text>
             <Text style={{ fontSize: 13, color: C.grey, lineHeight: 18 }}>Please answer the questions below to complete your accident classification.</Text>
