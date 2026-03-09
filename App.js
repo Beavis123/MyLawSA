@@ -3,7 +3,7 @@
  * Expo Go compatible — single App.js
  * Colours: Red · Yellow · Green
  *App at this point in development can do all statement types, send emails out of app to admin and store records into a firebase database, UI is functional. IOS development has to be reviewed and Android must still be published
- *new features - ID validation with Luhn algorith, nearest police station calculation using Haversine formula, info blocks next to all fields, lawyer validation for cases already being handled, fault disclaimer before ptoentially incirminating questions
+ new features - ID validation with Luhn algorithm, nearest police station calculation using Haversine formula, info blocks next to all fields, lawyer validation for cases already being handled, fault disclaimer before ptoentially incirminating questions
  */
 
 import React, { useState, useCallback, useRef } from 'react';
@@ -415,13 +415,15 @@ const QUESTIONS = [
 
 const OUTCOMES = {
   FIXED_OBJECT:     { label:'Fixed Object Collision',                            claimable:false, icon:'⚠️', subQs:[
-    { id:'fq_object',    label:'Object struck',                              type:'text',  placeholder:'Describe the object that was struck' },
-    { id:'fq_road_cond', label:'Did you lose control due to road conditions?',type:'ynu'                                                     },
-    { id:'fq_road_desc', label:'If Yes — describe conditions',               type:'text',  placeholder:'e.g. wet road, pothole',    conditionalOn:'fq_road_cond'  },
-    { id:'fq_avoiding',  label:'Were you avoiding another road user?',        type:'ynu'                                                     },
-    { id:'fq_mech',      label:'Was mechanical failure suspected?',           type:'ynu'                                                     },
-    { id:'fq_parked',    label:'Was a parked vehicle struck?',                type:'ynu'                                                     },
-    { id:'fq_damage',    label:'Was there property damage beyond your vehicle?',type:'ynu'                                                   },
+    { id:'fq_object',    label:'Object struck',                              type:'text',  placeholder:'Describe the object that was struck',
+      info:'Describe the fixed object your vehicle made contact with — be specific about what it was, its colour or material if relevant, and whether it was on the roadway, on the shoulder, or on a pavement. e.g. "A concrete road barrier on the left shoulder" or "A stationary vehicle parked partly on the road."' },
+    { id:'fq_road_cond', label:'Did you lose control due to road conditions?',type:'ynu' },
+    { id:'fq_road_desc', label:'If Yes — describe conditions',               type:'text',  placeholder:'e.g. wet road, pothole',    conditionalOn:'fq_road_cond',
+      info:'Describe the road conditions that caused you to lose control. Include weather, road surface state, and any specific hazard — e.g. "Heavy rain caused the road surface to be extremely slippery" or "A large pothole caused the vehicle to swerve."' },
+    { id:'fq_avoiding',  label:'Were you avoiding another road user?',        type:'ynu' },
+    { id:'fq_mech',      label:'Was mechanical failure suspected?',           type:'ynu' },
+    { id:'fq_parked',    label:'Was a parked vehicle struck?',                type:'ynu' },
+    { id:'fq_damage',    label:'Was there property damage beyond your vehicle?',type:'ynu' },
   ]},
   REAR_END:         { label:'Rear-end Collision',                               claimable:true,  icon:'⚖️', subQs:[
     { id:'rq_front',     label:'Were you the front vehicle?',                 type:'ynu'  },
@@ -429,10 +431,12 @@ const OUTCOMES = {
     { id:'rq_slowing',   label:'Were you slowing down?',                      type:'ynu'  },
     { id:'rq_braked',    label:'Did you brake before impact?',                type:'ynu'  },
     { id:'rq_reason',    label:'Was there a clear reason for slowing/stopping?',type:'ynu'},
-    { id:'rq_reason_d',  label:'If Yes — describe reason',                    type:'text', placeholder:'e.g. traffic light, jam', conditionalOn:'rq_reason' },
+    { id:'rq_reason_d',  label:'If Yes — describe reason',                    type:'text', placeholder:'e.g. traffic light, jam', conditionalOn:'rq_reason',
+      info:'State the factual reason you slowed down or stopped — do not assign blame. Examples: "The traffic light ahead was red", "There was a queue of slow-moving traffic", "A pedestrian stepped onto the road ahead of me." Keep it factual and objective.' },
     { id:'rq_you_lane',  label:'Did YOU change lanes just before impact?',    type:'ynu'  },
     { id:'rq_other_lane',label:'Did the OTHER vehicle change lanes?',         type:'ynu'  },
-    { id:'rq_follow',    label:'Estimate following distance',                  type:'text', placeholder:'e.g. 2 car lengths / 5 metres' },
+    { id:'rq_follow',    label:'Estimate following distance',                  type:'text', placeholder:'e.g. 2 car lengths / 5 metres',
+      info:'Give your best honest estimate of the gap between your vehicle and the vehicle ahead at the time of impact. Use car lengths (1 car length ≈ 4–5 metres) or metres. e.g. "Approximately 2 car lengths" or "About 5 metres." This is your estimate — do not guess wildly.' },
   ]},
   HEAD_ON:          { label:'Head-on Collision',                                claimable:true,  icon:'⚖️', subQs:[
     { id:'hq_correct',   label:'Were you in the correct lane?',               type:'ynu'  },
@@ -441,7 +445,8 @@ const OUTCOMES = {
     { id:'hq_markings',  label:'Were road markings visible?',                 type:'ynu'  },
     { id:'hq_braked',    label:'Did you brake before impact?',                type:'ynu'  },
     { id:'hq_swerved',   label:'Did you swerve to avoid the collision?',      type:'ynu'  },
-    { id:'hq_swerve_d',  label:'If Yes — in which direction?',               type:'text', placeholder:'e.g. Left', conditionalOn:'hq_swerved' },
+    { id:'hq_swerve_d',  label:'If Yes — in which direction?',               type:'text', placeholder:'e.g. Left', conditionalOn:'hq_swerved',
+      info:'State the direction you swerved — Left or Right — as seen from inside your vehicle looking forward. e.g. "I swerved to the left, towards the gravel shoulder." Keep it brief and factual.' },
     { id:'hq_daylight',  label:'Was it daylight at the time?',                type:'ynu'  },
     { id:'hq_wet',       label:'Was the road wet or slippery?',               type:'ynu'  },
   ]},
@@ -451,10 +456,12 @@ const OUTCOMES = {
     { id:'sq_stop',      label:'Were there stop signs present?',              type:'ynu'  },
     { id:'sq_stopped',   label:'Did you stop at the stop sign?',              type:'ynu'  },
     { id:'sq_straight',  label:'Were you driving straight?',                  type:'ynu'  },
-    { id:'sq_side_hit',  label:'Which side of your vehicle was hit?',         type:'text', placeholder:'Left / Right' },
+    { id:'sq_side_hit',  label:'Which side of your vehicle was hit?',         type:'text', placeholder:'Left / Right',
+      info:'State which side of your vehicle received the impact — Left or Right — as seen from the driver\'s seat looking forward. e.g. "The right side (passenger side) of my vehicle was struck." This is important for establishing the angle and direction of the collision.' },
     { id:'sq_from_left', label:'Did the other vehicle come from the LEFT?',   type:'ynu'  },
     { id:'sq_from_right',label:'Did the other vehicle come from the RIGHT?',  type:'ynu'  },
-    { id:'sq_direction', label:'Your direction of travel',                    type:'text', placeholder:'e.g. North on Main Street' },
+    { id:'sq_direction', label:'Your direction of travel',                    type:'text', placeholder:'e.g. North on Main Street',
+      info:'State the direction you were travelling and the road name. Use compass directions if possible — e.g. "Northbound on Commissioner Street" or "Travelling east along Hendrik Verwoerd Drive towards the N1." This helps establish your position relative to the other vehicle.' },
   ]},
   TURNING:          { label:'Turning / Intersection-turn Collision',            claimable:true,  icon:'⚖️', subQs:[
     { id:'tq_you_turn',  label:'Were you the one turning?',                   type:'ynu'  },
@@ -463,9 +470,11 @@ const OUTCOMES = {
     { id:'tq_intersect', label:'Did the turn occur at an intersection?',      type:'ynu'  },
     { id:'tq_stationary',label:'Were you stationary before turning?',         type:'ynu'  },
     { id:'tq_control',   label:'Was traffic control present?',                type:'ynu'  },
-    { id:'tq_ctrl_type', label:'If Yes — type of control',                   type:'text', placeholder:'traffic lights, stop, yield', conditionalOn:'tq_control' },
+    { id:'tq_ctrl_type', label:'If Yes — type of control',                   type:'text', placeholder:'traffic lights, stop, yield', conditionalOn:'tq_control',
+      info:'Describe the type of traffic control that was present at the point where the collision occurred. Examples: "Four-way stop", "Traffic lights — light was green in my direction", "Yield sign on the road I was turning into." State only what was present, not who obeyed or disobeyed.' },
     { id:'tq_oncoming',  label:'Was the other vehicle oncoming?',             type:'ynu'  },
-    { id:'tq_impact_pt', label:'Where in the turn did impact occur?',         type:'text', placeholder:'Start / Middle / End of turn' },
+    { id:'tq_impact_pt', label:'Where in the turn did impact occur?',         type:'text', placeholder:'Start / Middle / End of turn',
+      info:'Describe at what point during your turning manoeuvre the impact occurred. Was it just as you began to turn, halfway through the turn, or as you were completing the turn? e.g. "The collision occurred midway through my right turn, while I was still in the opposing lane." Be factual and concise.' },
   ]},
   SIDE_SWIPE:       { label:'Side-swipe Collision',                            claimable:true,  icon:'⚖️', subQs:[
     { id:'ssq_same_dir', label:'Were both vehicles travelling in the same direction?',type:'ynu' },
@@ -474,15 +483,18 @@ const OUTCOMES = {
     { id:'ssq_you_chg',  label:'Did YOU change lanes shortly before impact?',         type:'ynu' },
     { id:'ssq_oth_chg',  label:'Did the OTHER vehicle change lanes?',                 type:'ynu' },
     { id:'ssq_indicator',label:'Did you use your indicator?',                         type:'ynu' },
-    { id:'ssq_contact',  label:'Where did contact begin on your vehicle?',            type:'text', placeholder:'e.g. Front left door / Rear quarter panel' },
+    { id:'ssq_contact',  label:'Where did contact begin on your vehicle?',            type:'text', placeholder:'e.g. Front left door / Rear quarter panel',
+      info:'Identify the specific panel or area of your vehicle where contact first occurred. Use terms like: front bumper, front left door, driver\'s door, rear left quarter panel, left rear bumper. e.g. "Contact started on the left rear quarter panel and ran forward along the door." This is used to determine the geometry of the collision.' },
   ]},
   LANE_CHANGE:      { label:'Lane-change Collision',                           claimable:true,  icon:'⚖️', subQs:[
     { id:'lq_you',       label:'Did YOU change lanes?',                       type:'ynu'  },
     { id:'lq_other',     label:'Did the OTHER vehicle change lanes?',         type:'ynu'  },
     { id:'lq_indicator', label:'Did you use your indicator?',                 type:'ynu'  },
     { id:'lq_blind',     label:'Was there a blind spot issue?',               type:'ynu'  },
-    { id:'lq_lanes',     label:'From lane → to lane',                        type:'text', placeholder:'e.g. Lane 1 to Lane 2' },
-    { id:'lq_impact',    label:'Where on your vehicle did impact occur?',     type:'text', placeholder:'e.g. Rear left quarter panel' },
+    { id:'lq_lanes',     label:'From lane → to lane',                        type:'text', placeholder:'e.g. Lane 1 to Lane 2',
+      info:'Describe which lane you were in and which lane you moved into — or which lane the other vehicle moved from and into. Number lanes from left to right (Lane 1 = leftmost). e.g. "I moved from Lane 2 to Lane 1 (the left lane)" or "The other vehicle moved from Lane 1 into Lane 2 where I was travelling."' },
+    { id:'lq_impact',    label:'Where on your vehicle did impact occur?',     type:'text', placeholder:'e.g. Rear left quarter panel',
+      info:'State the specific area of your vehicle that was struck or made contact. Be precise — use terms like: front left bumper corner, left front door, left rear quarter panel, rear bumper left side. e.g. "The impact occurred on my left rear quarter panel, just behind the rear door."' },
   ]},
   PARKING:          { label:'Parking-area Collision',                          claimable:true,  icon:'⚖️', subQs:[
     { id:'pq_you_rev',   label:'Were YOU reversing?',                         type:'ynu'  },
@@ -490,22 +502,28 @@ const OUTCOMES = {
     { id:'pq_pull_in',   label:'Were you pulling into a parking bay?',        type:'ynu'  },
     { id:'pq_pull_out',  label:'Were you pulling out of a parking bay?',      type:'ynu'  },
     { id:'pq_obstructed',label:'Was visibility obstructed?',                  type:'ynu'  },
-    { id:'pq_obs_desc',  label:'If Yes — what caused the obstruction?',      type:'text', placeholder:'e.g. large vehicle, pillar', conditionalOn:'pq_obstructed' },
-    { id:'pq_area_name', label:'Parking area name',                           type:'text', placeholder:'e.g. Eastgate Mall / Office Park' },
+    { id:'pq_obs_desc',  label:'If Yes — what caused the obstruction?',      type:'text', placeholder:'e.g. large vehicle, pillar', conditionalOn:'pq_obstructed',
+      info:'Describe what was blocking your line of sight. Was it a large vehicle (bakkie, SUV, truck) parked adjacent to you? A structural pillar? A wall or hoarding? e.g. "A large SUV was parked in the bay to my left, completely blocking my view of oncoming traffic in the parking lane." Be specific — this is relevant to establishing visibility at the time.' },
+    { id:'pq_area_name', label:'Parking area name',                           type:'text', placeholder:'e.g. Eastgate Mall / Office Park',
+      info:'Enter the name of the parking area, shopping centre, or building where the collision occurred. e.g. "Eastgate Shopping Centre", "Sandton City parking level 3", "Corner office park on William Nicol Drive." If it is a street-side parking area, describe the street name and suburb.' },
   ]},
   MULTI_VEHICLE:    { label:'Multi-vehicle / Chain Collision',                  claimable:true,  icon:'⚖️', subQs:[
     { id:'mq_struck',    label:'Were you struck first?',                      type:'ynu'  },
     { id:'mq_pushed',    label:'Were you pushed into another vehicle?',       type:'ynu'  },
     { id:'mq_stationary',label:'Were you stationary before secondary impacts?',type:'ynu' },
     { id:'mq_highway',   label:'Did the collision occur on a highway/freeway?',type:'ynu' },
-    { id:'mq_count',     label:'Estimated number of vehicles involved',       type:'text', placeholder:'e.g. 3 vehicles' },
-    { id:'mq_sequence',  label:'Describe the sequence of impacts',            type:'textarea', placeholder:'e.g. Vehicle A struck me, I was pushed into Vehicle B' },
+    { id:'mq_count',     label:'Estimated number of vehicles involved',       type:'text', placeholder:'e.g. 3 vehicles',
+      info:'State your best estimate of how many vehicles were involved in total — including your own. e.g. "3 vehicles" or "4 vehicles — I was vehicle 2 in the chain." If you are unsure of the exact number, write "approximately 3–4 vehicles."' },
+    { id:'mq_sequence',  label:'Describe the sequence of impacts',            type:'textarea', placeholder:'e.g. Vehicle A struck me, I was pushed into Vehicle B',
+      info:'Describe the order in which impacts occurred — factually and in chronological order. Do not assign blame; just describe what physically happened. e.g. "I was stationary at a red light when I was struck from behind by a vehicle. The force of the impact pushed my vehicle forward into the vehicle stopped in front of me." Use "Vehicle A", "Vehicle B" etc. if you do not know the other drivers\' names.' },
   ]},
   HIT_AND_RUN:      { label:'Hit and Run',                                     claimable:true,  icon:'⚖️', subQs:[
     { id:'hrq_fled',     label:'Did the other driver leave without stopping?', type:'ynu' },
     { id:'hrq_details',  label:'Were any identifying details obtained?',       type:'ynu' },
-    { id:'hrq_det_desc', label:'If Yes — colour, registration, description',  type:'text', placeholder:'e.g. White Toyota, GP 123-456', conditionalOn:'hrq_details' },
-    { id:'hrq_direction',label:'Direction the vehicle fled',                   type:'text', placeholder:'e.g. Northbound on Commissioner Street' },
+    { id:'hrq_det_desc', label:'If Yes — colour, registration, description',  type:'text', placeholder:'e.g. White Toyota, GP 123-456', conditionalOn:'hrq_details',
+      info:'Record every identifying detail you observed about the fleeing vehicle — even partial information is valuable. Include: vehicle colour, make/brand, model if known, partial or full registration plate, any distinguishing features (dents, stickers, roof rack, tow bar). e.g. "Silver Toyota Fortuner, partial registration GP 4_ _-123, had a black roof rack and a tow bar."' },
+    { id:'hrq_direction',label:'Direction the vehicle fled',                   type:'text', placeholder:'e.g. Northbound on Commissioner Street',
+      info:'State the direction the fleeing vehicle travelled after the collision — use compass direction and road name where possible. e.g. "The vehicle drove off at high speed northbound on Commissioner Street, turning left into Sauer Street." The more specific you are, the more useful this is for investigators.' },
     { id:'hrq_witnesses',label:'Were there any witnesses?',                    type:'ynu' },
     { id:'hrq_cctv',     label:'Is CCTV footage possibly available nearby?',  type:'ynu' },
     { id:'hrq_reported', label:'Was the incident reported immediately to SAPS?',type:'ynu'},
@@ -514,20 +532,26 @@ const OUTCOMES = {
     { id:'svq_left_road',label:'Did the vehicle leave the roadway?',           type:'ynu' },
     { id:'svq_rolled',   label:'Did the vehicle roll over?',                   type:'ynu' },
     { id:'svq_struck',   label:'Did the vehicle strike an object after leaving the roadway?', type:'ynu' },
-    { id:'svq_obj_desc', label:'If Yes — what object was struck?',            type:'text', placeholder:'e.g. tree, barrier', conditionalOn:'svq_struck' },
+    { id:'svq_obj_desc', label:'If Yes — what object was struck?',            type:'text', placeholder:'e.g. tree, barrier', conditionalOn:'svq_struck',
+      info:'Describe the object your vehicle struck after leaving the roadway. Include what it was, its approximate size, and where it was in relation to the road — e.g. "A large gum tree approximately 3 metres from the road edge" or "An Armco barrier on the left shoulder of the N1." This detail is used in the statement to describe the final point of impact.' },
     { id:'svq_road_cond',label:'Were road conditions a contributing factor?',  type:'ynu' },
-    { id:'svq_rest_pos', label:'Final resting position of the vehicle',        type:'text', placeholder:'Describe where the vehicle came to rest' },
+    { id:'svq_rest_pos', label:'Final resting position of the vehicle',        type:'text', placeholder:'Describe where the vehicle came to rest',
+      info:'Describe exactly where your vehicle came to a stop after the incident — in relation to the road and any landmarks. e.g. "The vehicle came to rest on its wheels on the left gravel shoulder, approximately 20 metres past the point of impact" or "The vehicle rolled and came to rest on its roof in the road ditch on the left side." Be as precise as possible.' },
   ]},
   PEDESTRIAN:       { label:'Collision with Pedestrian / Cyclist / Motorcyclist', claimable:true, icon:'⚖️', subQs:[
-    { id:'peq_user',     label:'Which road user was involved?',               type:'text', placeholder:'Pedestrian / Cyclist / Motorcyclist' },
+    { id:'peq_user',     label:'Which road user was involved?',               type:'text', placeholder:'Pedestrian / Cyclist / Motorcyclist',
+      info:'State clearly what type of road user was involved. Choose one: Pedestrian (person on foot), Cyclist (person on a bicycle), or Motorcyclist (person on a motorbike or scooter). If more than one type was involved, list all of them — e.g. "Two pedestrians and one cyclist."' },
     { id:'peq_crossing', label:'Did it occur at a marked pedestrian crossing?',type:'ynu' },
     { id:'peq_vis',      label:'Was visibility limited at the time?',          type:'ynu' },
-    { id:'peq_vis_desc', label:'If Yes — reason',                             type:'text', placeholder:'e.g. heavy rain, dark conditions', conditionalOn:'peq_vis' },
+    { id:'peq_vis_desc', label:'If Yes — reason',                             type:'text', placeholder:'e.g. heavy rain, dark conditions', conditionalOn:'peq_vis',
+      info:'Describe what caused limited visibility at the time of the collision. Stick to observable facts — e.g. "It was dark with no street lighting in the area", "Heavy rain significantly reduced visibility", "The sun was low on the horizon and shining directly into my windscreen." Do not speculate — only describe what you experienced.' },
     { id:'peq_braked',   label:'Did you brake before impact?',                type:'ynu' },
     { id:'peq_moved',    label:'Did the person move into your path?',          type:'ynu' },
     { id:'peq_injuries', label:'Were injuries visible?',                       type:'ynu' },
-    { id:'peq_inj_desc', label:'If Yes — describe visible injuries',          type:'text', placeholder:'e.g. leg injury, abrasions', conditionalOn:'peq_injuries' },
-    { id:'peq_dir',      label:'Direction of travel of the road user',         type:'text', placeholder:'e.g. Crossing from right to left' },
+    { id:'peq_inj_desc', label:'If Yes — describe visible injuries',          type:'text', placeholder:'e.g. leg injury, abrasions', conditionalOn:'peq_injuries',
+      info:'Describe only the injuries you could visibly observe at the scene — do not speculate about internal injuries or prognosis. Examples: "The person had visible abrasions on their arms and legs", "There was a visible wound to the left leg", "The person appeared to be unconscious but was breathing." Keep it factual and compassionate.' },
+    { id:'peq_dir',      label:'Direction of travel of the road user',         type:'text', placeholder:'e.g. Crossing from right to left',
+      info:'Describe the direction the pedestrian, cyclist, or motorcyclist was moving at the time of the collision — from your perspective as the driver. e.g. "The pedestrian was crossing the road from right to left (from the passenger side to the driver side of my vehicle)" or "The cyclist was travelling in the same direction as me on the left side of the road." This is critical for establishing the trajectory of the collision.' },
   ]},
   NOT_CLASSIFIABLE: { label:'Not Classifiable', claimable:false, icon:'⚠️', subQs:[] },
 };
@@ -3390,7 +3414,15 @@ function OutcomeScreen({ navigation, route }) {
             if (sq.conditionalOn && sub[sq.conditionalOn] !== 'y') return null;
             return (
               <View key={sq.id} style={ui.subCard}>
-                <Text style={ui.subTxt}>{sq.label}</Text>
+                {/* Label row — show tooltip only on text/textarea fields that have info */}
+                {(sq.type === 'text' || sq.type === 'textarea') && sq.info ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                    <Text style={[ui.subTxt, { flex: 1, marginBottom: 0 }]}>{sq.label}</Text>
+                    <InfoTooltip text={sq.info} />
+                  </View>
+                ) : (
+                  <Text style={ui.subTxt}>{sq.label}</Text>
+                )}
                 {sq.type === 'ynu' && <YNU value={sub[sq.id]} onChange={v => set(sq.id, v)} />}
                 {(sq.type === 'text' || sq.type === 'textarea') && <Inp placeholder={sq.placeholder} value={sub[sq.id] || ''} onChangeText={v => set(sq.id, v)} multiline={sq.type === 'textarea'} numberOfLines={sq.type === 'textarea' ? 4 : 1} style={{ marginTop: 8 }} />}
               </View>
