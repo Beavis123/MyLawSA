@@ -432,7 +432,7 @@ const OUTCOMES = {
     { id:'rq_braked',    label:'Did you brake before impact?',                type:'ynu'  },
     { id:'rq_reason',    label:'Was there a clear reason for slowing/stopping?',type:'ynu'},
     { id:'rq_reason_d',  label:'If Yes — describe reason',                    type:'text', placeholder:'e.g. traffic light, jam', conditionalOn:'rq_reason',
-      info:'State the factual reason you slowed down or stopped — do not assign blame. Examples: "The traffic light ahead was red", "There was a queue of slow-moving traffic", "A pedestrian stepped onto the road ahead of me." Keep it factual and objective.' },
+      info:'State the factual reason you slowed or stopped. Do not assign blame. Examples: "Red traffic light", "Slow-moving traffic", "Pedestrian ahead".' },
     { id:'rq_you_lane',  label:'Did YOU change lanes just before impact?',    type:'ynu'  },
     { id:'rq_other_lane',label:'Did the OTHER vehicle change lanes?',         type:'ynu'  },
     { id:'rq_follow',    label:'Estimate following distance',                  type:'text', placeholder:'e.g. 2 car lengths / 5 metres',
@@ -515,7 +515,7 @@ const OUTCOMES = {
     { id:'mq_count',     label:'Estimated number of vehicles involved',       type:'text', placeholder:'e.g. 3 vehicles',
       info:'State your best estimate of how many vehicles were involved in total — including your own. e.g. "3 vehicles" or "4 vehicles — I was vehicle 2 in the chain." If you are unsure of the exact number, write "approximately 3–4 vehicles."' },
     { id:'mq_sequence',  label:'Describe the sequence of impacts',            type:'textarea', placeholder:'e.g. Vehicle A struck me, I was pushed into Vehicle B',
-      info:'Describe the order in which impacts occurred — factually and in chronological order. Do not assign blame; just describe what physically happened. e.g. "I was stationary at a red light when I was struck from behind by a vehicle. The force of the impact pushed my vehicle forward into the vehicle stopped in front of me." Use "Vehicle A", "Vehicle B" etc. if you do not know the other drivers\' names.' },
+      info:'Describe the order in which impacts occurred — factually and in chronological order. Facts only. Do not speculate or assign fault. e.g. "I was stationary at a red light when I was struck from behind by a vehicle. The force of the impact pushed my vehicle forward into the vehicle stopped in front of me." Use "Vehicle A", "Vehicle B" etc. if you do not know the other drivers\' names.' },
   ]},
   HIT_AND_RUN:      { label:'Hit and Run',                                     claimable:true,  icon:'⚖️', subQs:[
     { id:'hrq_fled',     label:'Did the other driver leave without stopping?', type:'ynu' },
@@ -2977,12 +2977,12 @@ function SplashScreen({ navigation }) {
             </View>
 
             <Text style={{ fontSize: 14, color: C.text, lineHeight: 22, marginBottom: 20, textAlign: 'center' }}>
-              Is another attorney or law firm currently handling this vehicle accident case on your behalf?
+              Is another attorney or law firm currently actively handling this vehicle accident matter on your behalf?
             </Text>
 
             {/* Radio choices */}
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-              {[{ label: 'Yes, I have a lawyer', value: 'yes' }, { label: 'No, I do not', value: 'no' }].map(opt => {
+              {[{ label: 'Yes — another lawyer is actively handling my matter', value: 'yes' }, { label: 'No — I have no lawyer / no one is currently acting for me', value: 'no' }].map(opt => {
                 const sel = conflictChoice === opt.value;
                 return (
                   <TouchableOpacity
@@ -3008,10 +3008,21 @@ function SplashScreen({ navigation }) {
             {/* Response message when "yes" is selected */}
             {conflictChoice === 'yes' && (
               <View style={{ backgroundColor: C.redLight, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: C.red, padding: 14, marginBottom: 16 }}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: C.red, marginBottom: 6 }}>⚠️ We Are Unable to Assist</Text>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: C.red, marginBottom: 6 }}>⚠️ Important Notice Regarding Existing Legal Representation</Text>
                 <Text style={{ fontSize: 13, color: C.red2, lineHeight: 20 }}>
-                  We appreciate your honesty. However, MyLawSA is unable to take on cases where another legal representative is already involved, as this would constitute a conflict of interest.{'\n\n'}
-                  Our service is designed for cases where MyLawSA can take full ownership of the matter from start to finish. If your current representation is no longer active, you are welcome to return and start a new case with us.
+                  Thank you for your response.
+                </Text>
+                <Text style={{ fontSize: 13, color: C.red2, lineHeight: 20 }}>
+                  MyLawSA can only assist where we are able to take full and active control of a matter from start to finish.
+                </Text>
+                <Text style={{ fontSize: 13, color: C.red2, lineHeight: 20 }}>
+                  ✅ If another party (such as a lawyer or legal representative) is currently actively handling your case, we regrettably cannot assist, as this would create a conflict of interest.
+                </Text>
+                <Text style={{ fontSize: 13, color: C.red2, lineHeight: 20 }}>
+                  ✅ If another party is not actively handling your case, MyLawSA may still be able to assist you.
+                </Text>
+                <Text style={{ fontSize: 13, color: C.red2, lineHeight: 20 }}>
+                  In such cases, we can also guide you through the process of formally cancelling an existing mandate, where applicable.{'\n\n'}Please confirm whether any other legal representative is currently and actively working on your matter, so that we can advise you correctly on the next steps.
                 </Text>
                 <TouchableOpacity
                   style={{ backgroundColor: C.red, borderRadius: 10, paddingVertical: 13, alignItems: 'center', marginTop: 14 }}
@@ -3271,9 +3282,9 @@ function DetailsScreen({ navigation, route }) {
           <View style={[ui.infoBox, { marginTop: -6, marginBottom: 14 }]}>
             <Text style={{ fontSize: 16 }}>💡</Text>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: C.grey, marginBottom: 4 }}>What to include in your damage estimate:</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: C.grey, marginBottom: 4 }}>What to include in your estimate</Text>
               <Text style={{ fontSize: 12, color: C.grey, lineHeight: 18 }}>
-                Your total should include <Text style={{ fontWeight: '700' }}>all</Text> costs arising from the accident:{'\n'}
+                Include all costs arising directly from the accident, such as:{'\n'}
                 • Tow truck / vehicle recovery fees{'\n'}
                 • Car hire / alternative transport during repairs{'\n'}
                 • Transport costs while your car was off the road{'\n'}
@@ -3282,7 +3293,7 @@ function DetailsScreen({ navigation, route }) {
               </Text>
             </View>
           </View>
-          <Field label="SAPS Case Number (if known)" info="If SAPS attended the scene and issued you with a case number, enter it here (e.g. CAS 123/02/2025). Leave blank if no case number was issued yet."><Inp placeholder="e.g. CAS 123/02/2025" value={draft.accident.caseNumber} onChangeText={v => ua('caseNumber', v)} /></Field>
+          <Field label="SAPS Case Number (if known)" info="Enter the SAPS CAS number if you have one (e.g. 'CAS 123/02/2025'). Leave blank if you have not opened a case yet."><Inp placeholder="e.g. CAS 123/02/2025" value={draft.accident.caseNumber} onChangeText={v => ua('caseNumber', v)} /></Field>
         </>}
       </ScrollView>
 
