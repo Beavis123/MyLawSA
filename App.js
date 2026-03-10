@@ -790,6 +790,11 @@ function InfoTooltip({ text }) {
           padding: 10, zIndex: 50,
         }}>
           <Text style={{ fontSize: 12, color: C.yellow2, lineHeight: 18 }}>{text}</Text>
+          <View style={{ marginTop: 8, paddingTop: 7, borderTopWidth: 1, borderTopColor: C.yellow }}>
+            <Text style={{ fontSize: 10, color: C.yellow2, lineHeight: 15, fontStyle: 'italic', opacity: 0.85 }}>
+              Tooltip wording designed to align with SAPS affidavit and statement-taking standards: factual, chronological, non-speculative, and non-accusatory.
+            </Text>
+          </View>
           <TouchableOpacity
             onPress={() => setOpen(false)}
             style={{ position: 'absolute', top: 6, right: 8 }}
