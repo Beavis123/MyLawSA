@@ -515,7 +515,7 @@ const OUTCOMES = {
     { id:'mq_count',     label:'Estimated number of vehicles involved',       type:'text', placeholder:'e.g. 3 vehicles',
       info:'State your best estimate of how many vehicles were involved in total — including your own. e.g. "3 vehicles" or "4 vehicles — I was vehicle 2 in the chain." If you are unsure of the exact number, write "approximately 3–4 vehicles."' },
     { id:'mq_sequence',  label:'Describe the sequence of impacts',            type:'textarea', placeholder:'e.g. Vehicle A struck me, I was pushed into Vehicle B',
-      info:'Describe the order in which impacts occurred — factually and in chronological order. Facts only. Do not speculate or assign fault. e.g. "I was stationary at a red light when I was struck from behind by a vehicle. The force of the impact pushed my vehicle forward into the vehicle stopped in front of me." Use "Vehicle A", "Vehicle B" etc. if you do not know the other drivers\' names.' },
+      info:'Describe the order in which impacts occurred, factually and in chronological order. Refer to vehicles as \'Vehicle A\', \'Vehicle B\' etc. for clarity — regardless of whether you know the other drivers\' names. Do not speculate or assign fault. Example: \'I was stationary at a red light when I was struck from behind by Vehicle B. The force of the impact pushed my vehicle forward into Vehicle A, which was stopped in front of me.\'' },
   ]},
   HIT_AND_RUN:      { label:'Hit and Run',                                     claimable:true,  icon:'⚖️', subQs:[
     { id:'hrq_fled',     label:'Did the other driver leave without stopping?', type:'ynu' },
@@ -549,7 +549,7 @@ const OUTCOMES = {
     { id:'peq_moved',    label:'Did the person move into your path?',          type:'ynu' },
     { id:'peq_injuries', label:'Were injuries visible?',                       type:'ynu' },
     { id:'peq_inj_desc', label:'If Yes — describe visible injuries',          type:'text', placeholder:'e.g. leg injury, abrasions', conditionalOn:'peq_injuries',
-      info:'Describe only the injuries you could visibly observe at the scene — do not speculate about internal injuries or prognosis. Examples: "The person had visible abrasions on their arms and legs", "There was a visible wound to the left leg", "The person appeared to be unconscious but was breathing." Keep it factual and compassionate.' },
+      info:'Describe only what you could visibly observe at the scene. Do not speculate about the severity of injuries or make medical assumptions. Example: 'The person had visible abrasions on their arms and legs and appeared to be conscious but unable to stand.'' },
     { id:'peq_dir',      label:'Direction of travel of the road user',         type:'text', placeholder:'e.g. Crossing from right to left',
       info:'Describe the direction the pedestrian, cyclist, or motorcyclist was moving at the time of the collision — from your perspective as the driver. e.g. "The pedestrian was crossing the road from right to left (from the passenger side to the driver side of my vehicle)" or "The cyclist was travelling in the same direction as me on the left side of the road." This is critical for establishing the trajectory of the collision.' },
   ]},
@@ -1671,18 +1671,18 @@ const GENERIC_FLOWS = {
       ]},
       { title: 'Items Stolen', fields: [
         { id:'items',       label:'Describe Items Stolen',        type:'textarea', required:true,  placeholder:'List each item, include make/model/serial numbers where possible', info:'List every item that was stolen. Include the make, model, colour, and serial or IMEI numbers where you have them.' },
-        { id:'totalValue',  label:'Estimated Total Value (R)',    type:'text',     required:false, placeholder:'e.g. R 8 500', keyboard:'numeric', info:'Your best estimate of the total replacement value of all stolen items in South African Rand.' },
-        { id:'estimatedDamage', label:'Estimated Total Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 8 500', keyboard:'numeric', info:'The total estimated financial loss, including the value of stolen items and any other related costs.' },
+        { id:'totalValue',  label:'Estimated Total Value (R)',    type:'text',     required:false, placeholder:'e.g. R 8 500', keyboard:'numeric', info:'Your best estimate of the total replacement value of all stolen items in South African Rand. Use current replacement cost — what it would cost to replace each item today, not what you originally paid for it.' },
+        { id:'estimatedDamage', label:'Estimated Total Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 8 500', keyboard:'numeric', info:'The total estimated financial loss related to this incident. This may be higher than the value of the stolen items alone — for example, if a window was smashed, a lock was broken, or a bag was damaged in order to access the stolen items. Include all related costs.' },
         { id:'serialNums',  label:'Serial / IMEI Numbers (if known)', type:'text', required:false, placeholder:'e.g. IMEI: 356938035643809', info:'If you have serial numbers, IMEI numbers, or other identifying numbers for stolen devices or items, enter them here.' },
       ]},
       { title: 'Circumstances', fields: [
         { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
         { id:'estimatedDamage', label:'Estimated Damage / Loss (R)', type:'text', required:false, placeholder:'e.g. R 15 000', keyboard:'numeric' },
-        { id:'circumstances', label:'Describe What Happened',     type:'textarea', required:true,  placeholder:'Describe clearly what happened leading up to, during, and after the theft', info:'Give a clear, factual, and chronological account of what happened. Describe events before, during, and after the theft — based on facts only.' },
-        { id:'suspectDesc',   label:'Suspect Description (if seen)', type:'textarea', required:false, placeholder:'e.g. Male, approximately 25 years, wearing red jacket', info:'If you saw the suspect, describe them as accurately as possible — sex, approximate age, height, build, clothing, and any distinguishing features.' },
-        { id:'witnessName',   label:'Witness Name (if any)',      type:'text',     required:false, placeholder:'Full name of witness', info:'The full name of any person who witnessed the theft and can corroborate your account.' },
-        { id:'witnessCell',   label:'Witness Contact Number',     type:'text',     required:false, placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10, info:'A contact number for the witness — used for follow-up by investigators or attorneys.' },
-        { id:'caseNumber',    label:'SAPS Case Number (if obtained)', type:'text', required:false, placeholder:'e.g. CAS 123/02/2025', info:'If you have already reported the theft to SAPS and received a case number, enter it here. Leave blank if not yet reported.' },
+        { id:'circumstances', label:'Describe What Happened',     type:'textarea', required:true,  placeholder:'Describe clearly what happened leading up to, during, and after the theft', info:'Give a clear, factual, and chronological account of what happened. Describe what you were doing before the incident, what you observed during the incident, and what you did immediately afterwards. Stick to facts — do not include opinions or assumptions about the other party\'s intentions.' },
+        { id:'suspectDesc',   label:'Suspect Description (if seen)', type:'textarea', required:false, placeholder:'e.g. Male, approximately 25 years, wearing red jacket', info:'If you saw the person responsible, describe them as accurately as possible. Include: sex, approximate age, approximate height and build, clothing, skin tone, hairstyle, and any distinguishing features such as tattoos, scars, or glasses. Even partial information is useful.' },
+        { id:'witnessName',   label:'Witness Name (if any)',      type:'text',     required:false, placeholder:'Full name of witness', info:'The full name of any person who was present and witnessed the incident. A witness can significantly strengthen your case — include their details even if you only have a first name and number.' },
+        { id:'witnessCell',   label:'Witness Contact Number',     type:'text',     required:false, placeholder:'e.g. 0821234567', keyboard:'phone-pad', maxLen:10, info:'A working contact number for the witness. This may be used by investigators or attorneys to verify your account. Make sure the witness is aware that their details are being included.' },
+        { id:'caseNumber',    label:'SAPS Case Number (if obtained)', type:'text', required:false, placeholder:'e.g. CAS 123/02/2025', info:'If you have already reported this incident to the South African Police Service and received a case number, enter it here in the format: CAS 123/02/2025. Leave blank if you have not yet opened a case — you can update your statement later.' },
       ]},
     ],
   },
@@ -3013,7 +3013,7 @@ function SplashScreen({ navigation }) {
                   Thank you for your response.
                 </Text>
                 <Text style={{ fontSize: 13, color: C.red2, lineHeight: 20 }}>
-                  MyLawSA can only assist where we are able to take full and active control of a matter from start to finish.
+                  MyLawSA needs to manage your matter directly in order to help you effectively. If another legal representative is already actively working on your case, we are unfortunately unable to step in alongside them.
                 </Text>
                 <Text style={{ fontSize: 13, color: C.red2, lineHeight: 20 }}>
                   ✅ If another party (such as a lawyer or legal representative) is currently actively handling your case, we regrettably cannot assist, as this would create a conflict of interest.
@@ -3244,8 +3244,8 @@ function DetailsScreen({ navigation, route }) {
             />
           </Field>
           <Field label="Residential Address" info="Your current home address — include street number, street name, suburb, and city."><Inp placeholder="Street, Suburb, City" value={draft.driver.address} onChangeText={v => ud('address', v)} /></Field>
-          <Field label="Driver's Licence Number" info="The number printed on your South African driver's licence card. Leave blank if not available."><Inp placeholder="Licence number" value={draft.driver.licenceNumber} onChangeText={v => ud('licenceNumber', v)} /></Field>
-          <Field label="Relationship to Vehicle" required info="Describe your relationship to the vehicle — e.g. Owner (you own it), Renter (hired/leased), Employee (company vehicle), Borrowed (borrowed from someone), or Other."><PickBtn value={draft.driver.relationship} placeholder="Select..." onPress={() => setRel(true)} /></Field>
+          <Field label="Driver's Licence Number" info="The number printed on your South African driver's licence card. Leave blank if you do not have it with you right now — you can update your statement later."><Inp placeholder="Licence number" value={draft.driver.licenceNumber} onChangeText={v => ud('licenceNumber', v)} /></Field>
+          <Field label="Relationship to Vehicle" required info="Describe your relationship to the vehicle — e.g. Owner (the vehicle is registered in your name), Renter (hired or leased), Employee (a company vehicle assigned to you), Borrowed (the vehicle belongs to another person), or Other."><PickBtn value={draft.driver.relationship} placeholder="Select..." onPress={() => setRel(true)} /></Field>
         </>}
 
         {tab === 1 && <>
@@ -3259,7 +3259,7 @@ function DetailsScreen({ navigation, route }) {
             <Field label="Colour" style={{ flex: 1 }} info="The primary colour of the vehicle as it appears. Use a single descriptive word (e.g. Silver, White, Dark Blue)."><Inp placeholder="e.g. Silver" value={draft.vehicle.colour} onChangeText={v => uv('colour', v)} /></Field>
           </View>
           <CheckRow label="Trailer involved?" checked={draft.vehicle.trailerInvolved} onChange={v => uv('trailerInvolved', v)} />
-          {draft.vehicle.trailerInvolved && <Field label="Trailer Registration" style={{ marginTop: 10 }} info="The registration plate number of the trailer that was attached to your vehicle at the time of the accident."><Inp placeholder="Trailer registration number" value={draft.vehicle.trailerReg} onChangeText={v => uv('trailerReg', v)} /></Field>}
+          {draft.vehicle.trailerInvolved && <Field label="Trailer Registration" style={{ marginTop: 10 }} info="Only complete this field if a trailer was physically attached to and being towed by your vehicle at the time of the accident. Leave blank if no trailer was involved."><Inp placeholder="Trailer registration number" value={draft.vehicle.trailerReg} onChangeText={v => uv('trailerReg', v)} /></Field>}
         </>}
 
         {tab === 2 && <>
@@ -3275,7 +3275,7 @@ function DetailsScreen({ navigation, route }) {
           <Field label="Nearest Landmark or Intersection" info="A nearby recognisable landmark, building, or cross-street that helps identify the exact location of the accident (e.g. Near KFC, Corner of Main & First Street)."><Inp placeholder="e.g. Near KFC / Corner of Main Road" value={draft.accident.landmark} onChangeText={v => ua('landmark', v)} /></Field>
           <Field label="City / Town" required info="The name of the city or town where the accident occurred (e.g. Johannesburg, Pretoria, Cape Town)."><Inp placeholder="e.g. Johannesburg" value={draft.accident.city} onChangeText={v => ua('city', v)} /></Field>
           <Field label="Province" info="The South African province in which the accident occurred. Select from the list."><PickBtn value={draft.accident.province} placeholder="Select province..." onPress={() => setProv(true)} /></Field>
-          <Field label="Estimated Vehicle Damage (R)" info="Enter the total estimated cost of all accident-related damages in South African Rand.">
+          <Field label="Estimated Vehicle Damage (R)" info="Enter the total estimated cost of all accident-related damages in South African Rand. Include all costs arising directly from the accident, such as:\n• Tow truck or vehicle recovery fees\n• Car hire or alternative transport during repairs\n• Transport costs while your car was off the road\n• Actual cost of repairs to your vehicle\n• Excess or shortfall payments if you are partially insured\n• Any other related out-of-pocket expenses\nIf you are unsure of the exact amount, provide your best honest estimate.">
             <Inp placeholder="e.g. R 35 000" value={draft.accident.estimatedDamage} onChangeText={v => ua('estimatedDamage', v)} keyboardType="numeric" />
           </Field>
           {/* Damage cost breakdown info block */}
